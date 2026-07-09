@@ -168,6 +168,22 @@ docker run --rm -p 8080:8080 mutant-detector
 # → http://localhost:8080
 ```
 
+## Deploy (live demo)
+
+A [`render.yaml`](./render.yaml) Blueprint deploys the assembled service to
+[Render](https://render.com)'s free tier. On Render, choose **New → Blueprint**,
+point it at this repo, and apply — it builds `backend/cmd/server` from the repo
+root and serves the API + frontend, health-checked at `/healthz`. Render injects
+`PORT`; the server reads it.
+
+> **Live demo:** _\<add the Render URL here after the first deploy\>_
+
+**Trade-off (documented):** Render's free tier has **no persistent disk**, so the
+SQLite database (`DB_PATH=/tmp/mutant.db`) is **ephemeral** — the stored DNAs and
+`/stats/` counts reset when the instance idles out (~15 min) or redeploys. That's
+fine for a public demo link and does **not** change NFR-6: the local/default run
+still needs no external services and no build step beyond `go run`.
+
 ## Scalability (NFR-2)
 
 Addressed by design; measured on one node in [loadtest/RESULTS.md](./loadtest/RESULTS.md).

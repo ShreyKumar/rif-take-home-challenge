@@ -173,6 +173,11 @@ Addressed by **design and documentation** (diagram + README), not a benchmark:
 ### NFR-6 — Portability & run experience
 - `go run` / `go build` works with no external services for the default (SQLite) configuration.
 - Configuration via environment variables; sensible defaults.
+- **Optional live demo:** a `render.yaml` Blueprint deploys the assembled service to Render's free
+  tier (build from repo root, `FRONTEND_DIR=frontend`, health check `/healthz`). This is a
+  convenience layered on top and does **not** alter the default local config; the free tier has no
+  persistent disk, so the demo's SQLite store is ephemeral (resets on idle spin-down / redeploy).
+  See the README's *Deploy* section.
 
 ---
 
