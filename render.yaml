@@ -5,24 +5,20 @@
 # default configuration (NFR-6 — `go run ./cmd/server` still needs no external
 # services). Deploy by pointing Render's "New → Blueprint" at this repo.
 #
-# The build runs from the repo root so both backend/ and frontend/ are visible:
-# it compiles the server from backend/, and the running process serves the
-# static frontend from FRONTEND_DIR=frontend (repo-root-relative), differing
-# from the local default of ../frontend.
+# Deployed via the multi-stage backend/Dockerfile rather than Render's native Go
+# runtime: the image COPYs frontend/ to /app/frontend and bakes in
+# FRONTEND_DIR=/app/frontend (absolute), so serving the static UI does not depend
+# on Render's runtime working directory or checkout path — the fragile part that
+# breaks the native-runtime approach. The build context is the repo root so the
+# Dockerfile can see both backend/ and frontend/.
 services:
   - type: web
     name: mutant-detector
-    runtime: go
+    runtime: docker
     plan: free
     branch: main
-    buildCommand: cd backend && go build -o ../server ./cmd/server
-    startCommand: ./server
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
     healthCheckPath: /healthz
-    envVars:
-      # Render injects PORT at runtime; the server reads it (config default 8080).
-      - key: FRONTEND_DIR
-        value: frontend
-      # Free tier has no persistent disk, so the DB is intentionally ephemeral
-      # (see the deploy note in the README) — /tmp is guaranteed writable.
-      - key: DB_PATH
-        value: /tmp/mutant.db
+    # PORT is injected by Render and read by the server; FRONTEND_DIR and DB_PATH
+    # are baked into the image (DB is ephemeral on the free tier — no disk).
