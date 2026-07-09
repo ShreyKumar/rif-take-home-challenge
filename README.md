@@ -21,8 +21,8 @@ backend):
 
 ```sh
 cd frontend
-npm install
-npm run build   # or: npm run watch
+npx tsc           # compile to app.js
+npx tsc --watch   # or: watch for changes
 ```
 
 The full README — build/run/test instructions, `curl` examples, and the scalability narrative — lands in Phase 8.
