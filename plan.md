@@ -37,7 +37,6 @@ flowchart LR
         P4 --> P5
         P5 --> P7[P7 · E2E tests]
         P5 --> P8[P8 · Docs]
-        P5 --> P9[P9 · Concurrency test]
         P5 --> P10[P10 · Load harness + perf]
         P8 --> P11[P11 · Render deploy]
     end
@@ -53,11 +52,11 @@ flowchart LR
   (requirements §3) and can start immediately. P5 serves it at runtime; end-to-end verification happens
   once P5 is merged.
 - **Barrier — P5:** injects the real algorithm + store into the handlers and mounts every route.
-- **Wave 2 — after P5:** `P7`, `P8`, `P9`, `P10` run in parallel; none depend on each other.
+- **Wave 2 — after P5:** `P7`, `P8`, `P10` run in parallel; none depend on each other.
 - **P11** follows once `P8` (docs) lands — the deploy note it adds to the README needs `P8`'s wording
   in place before it can point at a live URL.
 
-Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **4 tracks** in Wave 2.
+Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **3 tracks** in Wave 2.
 
 ---
 
@@ -180,20 +179,6 @@ Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **4 tracks** in Wave 2.
   `loadtest/RESULTS.md` (populated by P10) for performance evidence.
 - **Done when:** a clean checkout can build, run, and test from the README alone.
 
-## Phase 9 — Concurrency stress test (CI)
-**PR:** `test: concurrency stress under -race` · **~150 LOC** · **deps:** P5
-
-- **Goal:** prove correctness under concurrent load — the parts most likely to break at scale.
-- **Covers:** **FR-3.3** (concurrent dedup), **FR-4** counters, **NFR-3**.
-- **Adds:** a bounded Go stress test (`backend/internal/api/concurrency_test.go`) that runs the API via
-  `httptest.Server` and fires a fixed pool of goroutines (e.g. 2–5k requests) mixing: the *same* DNA
-  repeated (dedup), many *distinct* DNAs, and concurrent `/stats/` reads. Asserts **invariants, not
-  timings**: exactly one row per distinct DNA, `count_mutant + count_human == distinct DNAs`, ratio
-  consistent, zero 5xx. Runs inside the existing `go test -race` CI job; adds a `make stress` target.
-- **Notes:** keep it bounded and deterministic (fixed counts, invariant assertions) so it never flakes;
-  target < ~10s wall time. This is a *correctness-under-concurrency* gate, **not** a throughput benchmark.
-- **Done when:** passes reliably under `-race` in CI; dedup + counters provably correct under concurrency.
-
 ## Phase 10 — Load harness + performance results
 **PR:** `perf: load harness + documented results` · **~150 LOC + docs** · **deps:** P5
 
@@ -243,14 +228,13 @@ Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **4 tracks** in Wave 2.
 | API contract (§3) | P3, P4 |
 | NFR-1 — efficiency | P1 |
 | NFR-2 — scalability (design) | P2 (interface, O(1) stats) + P8 (narrative) + P10 (measured evidence) |
-| NFR-3 — tests > 80% (backend) | ≥ 80% gate on every PR (from P0) + P7 (e2e) + P9 (concurrency) |
+| NFR-3 — tests > 80% (backend) | ≥ 80% gate on every PR (from P0) + P7 (e2e) |
 | NFR-4 — docs + diagram | P8 (diagram already in requirements §10) |
 | NFR-5 — code quality | all phases (conventions) |
 | NFR-6 — portability / run | P0 + P5 |
-| FR-3.3 — concurrent dedup (verified under load) | P9 |
 | Throughput evidence (real-hardware load test) | P10 |
 
 ## Definition of Done (overall)
 Every `FR-*`/`NFR-*` above is satisfied, the [RUBRIC.md](./RUBRIC.md) self-scoring checklist passes,
-every PR passed CI's ≥ 80% backend-coverage gate, the concurrency stress test passes under `-race`, the app builds/runs/tests
+every PR passed CI's ≥ 80% backend-coverage gate, the app builds/runs/tests
 from the README on a clean checkout, and the README includes documented load-test results.

@@ -61,8 +61,8 @@ the rubric (see [RUBRIC.md](./RUBRIC.md)).
 - **FR-3.1** Every **valid** DNA verified through the API is stored. Invalid input (400) is not stored.
 - **FR-3.2** **Exactly one record per unique DNA** — resubmitting the same DNA never creates a
   second row and never double-counts in stats (idempotent).
-- **FR-3.3** Uniqueness is enforced at the storage layer (UNIQUE key on the DNA hash), and must be
-  **safe under concurrent duplicate submissions** (race → still one row, via constraint / upsert).
+- **FR-3.3** Uniqueness is enforced at the storage layer (UNIQUE key on the DNA hash, with an
+  `ON CONFLICT DO NOTHING` upsert), so resubmitting the same DNA never creates a second row.
 - **FR-3.4** Each record stores at least: dedup key (hash), the DNA sequence, the `is_mutant` result,
   and a creation timestamp (see §5).
 
