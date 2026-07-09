@@ -67,12 +67,52 @@ func TestStatsEndpoint(t *testing.T) {
 
 func TestStatsRejectsNonGet(t *testing.T) {
 	h := NewStatsHandler(statsStore{})
-	req := httptest.NewRequest(http.MethodPost, "/stats/", nil)
+
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodDelete} {
+		req := httptest.NewRequest(method, "/stats/", nil)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusMethodNotAllowed {
+			t.Fatalf("%s: status = %d, want %d", method, rec.Code, http.StatusMethodNotAllowed)
+		}
+		if allow := rec.Header().Get("Allow"); allow != http.MethodGet {
+			t.Fatalf("%s: Allow = %q, want %q", method, allow, http.MethodGet)
+		}
+	}
+}
+
+// TestStatsRawJSONShape asserts the wire format directly — the exact JSON keys
+// from the API contract (§3) and the literal numeric rendering of ratio —
+// rather than round-tripping through contract.StatsResponse, which would pass
+// even if the json tags or ratio formatting were wrong.
+func TestStatsRawJSONShape(t *testing.T) {
+	h := NewStatsHandler(statsStore{mutant: 40, human: 100}) // PDF 40/100 = 0.4
+	req := httptest.NewRequest(http.MethodGet, "/stats/", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
+		t.Fatalf("Content-Type = %q, want application/json", ct)
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
+		t.Fatalf("body is not valid JSON: %v (%q)", err, rec.Body.String())
+	}
+	for _, key := range []string{"count_mutant_dna", "count_human_dna", "ratio"} {
+		if _, ok := raw[key]; !ok {
+			t.Fatalf("response missing key %q; body = %q", key, rec.Body.String())
+		}
+	}
+	if got := string(raw["count_mutant_dna"]); got != "40" {
+		t.Fatalf("count_mutant_dna = %s, want 40", got)
+	}
+	if got := string(raw["count_human_dna"]); got != "100" {
+		t.Fatalf("count_human_dna = %s, want 100", got)
+	}
+	if got := string(raw["ratio"]); got != "0.4" {
+		t.Fatalf("ratio rendered as %s, want 0.4", got)
 	}
 }
 

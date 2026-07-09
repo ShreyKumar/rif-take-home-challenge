@@ -14,6 +14,7 @@ import (
 func NewStatsHandler(store contract.Store) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", http.MethodGet)
 			writeStatsError(w, http.StatusMethodNotAllowed, "method not allowed; use GET")
 			return
 		}
