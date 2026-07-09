@@ -16,7 +16,6 @@ The frontend talks to the API over **same-origin relative paths** (`POST /mutant
 ### Prerequisites
 
 - [Go](https://go.dev/dl/) 1.25+
-- Python 3 or Node.js — optional, only to preview the frontend on its own
 
 ### Run both (integrated)
 
@@ -36,16 +35,5 @@ Configuration is read from the environment:
 | `PORT`         | `8080`        | TCP port the server listens on           |
 | `DB_PATH`      | `mutant.db`   | SQLite database file path                |
 | `FRONTEND_DIR` | `../frontend` | Directory of static assets served at `/` |
-
-### Frontend only (UI preview)
-
-To iterate on the UI without the backend, serve the static files directly:
-
-```sh
-cd frontend
-python3 -m http.server 5173   # then open http://localhost:5173
-```
-
-In this mode the `/mutant/` and `/stats/` calls have no backend to reach, so the API-backed features won't work — use the integrated command above for the full flow.
 
 > **Status:** the server currently exposes `/healthz` on `:8080`; static-file serving at `/` and the `/mutant/` and `/stats/` endpoints are mounted in later phases (see [plan.md](./plan.md)). The commands above describe how each component is run. The full README — build/test instructions, `curl` examples, and the scalability narrative — lands in Phase 8.
