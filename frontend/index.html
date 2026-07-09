@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RIF Mutant Detector</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <h1>RIF Mutant Detector</h1>
+      <p class="tagline">Paste a DNA sequence &mdash; one row per line &mdash; and check whether it belongs to a mutant.</p>
+    </header>
+
+    <section class="card" aria-labelledby="check-heading">
+      <h2 id="check-heading">Check DNA</h2>
+      <form id="dna-form" novalidate>
+        <label for="dna">DNA rows (one sequence row per line)</label>
+        <textarea
+          id="dna"
+          name="dna"
+          rows="8"
+          spellcheck="false"
+          autocomplete="off"
+          autocapitalize="characters"
+          placeholder="ATGCGA&#10;CAGTGC&#10;TTATGT&#10;AGAAGG&#10;CCCCTA&#10;TCACTG"
+          aria-describedby="dna-hint"
+        ></textarea>
+        <p id="dna-hint" class="hint">Each line is one row of the N&times;N matrix. Bases must be A, T, C or G.</p>
+        <button type="submit" id="check-btn">Check DNA</button>
+      </form>
+
+      <div id="result" class="result" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="card stats" aria-labelledby="stats-heading">
+      <div class="stats-header">
+        <h2 id="stats-heading">Statistics</h2>
+        <button type="button" id="refresh-stats-btn" class="secondary">Refresh stats</button>
+      </div>
+      <dl class="stats-grid">
+        <div class="stat">
+          <dt>Mutant DNA</dt>
+          <dd id="stat-mutant" aria-live="polite">&mdash;</dd>
+        </div>
+        <div class="stat">
+          <dt>Human DNA</dt>
+          <dd id="stat-human" aria-live="polite">&mdash;</dd>
+        </div>
+        <div class="stat">
+          <dt>Ratio (mutant / human)</dt>
+          <dd id="stat-ratio" aria-live="polite">&mdash;</dd>
+        </div>
+      </dl>
+      <p id="stats-error" class="stats-error" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
