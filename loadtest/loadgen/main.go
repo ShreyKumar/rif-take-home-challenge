@@ -71,8 +71,14 @@ type levelResult struct {
 }
 
 // runLevel drives `conc` workers in a closed loop for `dur`, cycling through the
-// request mix, and aggregates latencies + errors.
+// request mix, and aggregates latencies + errors. A closed-loop generator spins
+// workers as fast as possible without explicit think time, so throughput is
+// limited only by server performance (+ SQLite's single-writer bottleneck for writes).
 func runLevel(base string, conc int, dur time.Duration, mix string) levelResult {
+	// Configure HTTP client with connection pooling tuned for concurrency.
+	// MaxIdleConns{,PerHost} are set to conc*2 to ensure workers don't starve
+	// waiting for idle connections; the socket buffer is large enough for
+	// the number of inflight requests at this concurrency level.
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 		Transport: &http.Transport{
@@ -82,28 +88,40 @@ func runLevel(base string, conc int, dur time.Duration, mix string) levelResult 
 	}
 
 	var (
-		wg       sync.WaitGroup
-		mu       sync.Mutex
-		lat      []time.Duration
-		errs     int64
-		deadline = time.Now().Add(dur)
+		wg       sync.WaitGroup          // synchronize worker shutdown
+		mu       sync.Mutex              // protect access to shared lat slice
+		lat      []time.Duration         // all latencies across all workers (aggregated)
+		errs     int64                   // atomic counter: failed requests
+		deadline = time.Now().Add(dur)   // when to stop all workers
 	)
 
 	wg.Add(conc)
 	for i := 0; i < conc; i++ {
 		go func(worker int) {
 			defer wg.Done()
+			// Each worker maintains a local latency slice (pre-allocated) to minimize
+			// lock contention. Appending to a local slice avoids the mutex until the
+			// worker loop exits, allowing workers to run at full speed without fighting
+			// over the mu lock. This is critical for accurate high-throughput measurements.
 			local := make([]time.Duration, 0, 1024)
 			step := worker
+			// Closed-loop: spin until deadline. No explicit delays — throughput is
+			// driven only by how fast the server responds. Each iteration measures
+			// one round-trip time and records it.
 			for time.Now().Before(deadline) {
+				// pick() cycles through the request mix using step; starting each worker
+				// at a different step (worker) ensures interleaving of request types.
 				method, path, body := pick(step, mix)
 				step++
 				start := time.Now()
 				if ok := doRequest(client, method, base+path, body); !ok {
 					atomic.AddInt64(&errs, 1)
 				}
+				// Record latency (time from request start to response complete).
 				local = append(local, time.Since(start))
 			}
+			// At end of test, merge this worker's local results into the shared slice.
+			// Lock only here; avoids contention during the hot loop above.
 			mu.Lock()
 			lat = append(lat, local...)
 			mu.Unlock()
@@ -111,16 +129,17 @@ func runLevel(base string, conc int, dur time.Duration, mix string) levelResult 
 	}
 	wg.Wait()
 
+	// Aggregate results: sort latencies by duration, then compute percentiles + error rate.
 	elapsed := dur.Seconds()
 	sort.Slice(lat, func(i, j int) bool { return lat[i] < lat[j] })
 	total := len(lat)
 	res := levelResult{total: total}
 	if elapsed > 0 {
-		res.rps = float64(total) / elapsed
+		res.rps = float64(total) / elapsed // requests per second
 	}
 	if total > 0 {
-		res.p50 = percentile(lat, 0.50)
-		res.p99 = percentile(lat, 0.99)
+		res.p50 = percentile(lat, 0.50)    // 50th percentile (median)
+		res.p99 = percentile(lat, 0.99)    // 99th percentile (tail latency)
 		res.errPct = float64(errs) / float64(total) * 100
 	}
 	return res
