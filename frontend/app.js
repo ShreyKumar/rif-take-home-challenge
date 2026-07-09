@@ -1,42 +1,30 @@
-// RIF Mutant Detector — frontend logic.
+// RIF Mutant Detector — frontend logic (vanilla JS, no build step).
 // Talks to the Go backend at the same origin:
 //   POST /mutant/  -> 200 mutant · 403 human · 400 invalid · 405 non-POST
 //   GET  /stats/   -> { count_mutant_dna, count_human_dna, ratio }
 // The HTTP STATUS CODE is the authoritative contract; the JSON body is advisory.
 
-type ResultState = "positive" | "neutral" | "error" | "info";
-
-interface ErrorBody {
-  error?: string;
-}
-
-interface StatsResponse {
-  count_mutant_dna: number;
-  count_human_dna: number;
-  ratio: number;
-}
-
-function requireElement<T extends HTMLElement>(id: string): T {
+function requireElement(id) {
   const el = document.getElementById(id);
   if (!el) {
     throw new Error(`Missing required element: #${id}`);
   }
-  return el as T;
+  return el;
 }
 
-const form = requireElement<HTMLFormElement>("dna-form");
-const textarea = requireElement<HTMLTextAreaElement>("dna");
-const checkBtn = requireElement<HTMLButtonElement>("check-btn");
-const resultEl = requireElement<HTMLElement>("result");
+const form = requireElement("dna-form");
+const textarea = requireElement("dna");
+const checkBtn = requireElement("check-btn");
+const resultEl = requireElement("result");
 
-const refreshBtn = requireElement<HTMLButtonElement>("refresh-stats-btn");
-const statMutant = requireElement<HTMLElement>("stat-mutant");
-const statHuman = requireElement<HTMLElement>("stat-human");
-const statRatio = requireElement<HTMLElement>("stat-ratio");
-const statsError = requireElement<HTMLElement>("stats-error");
+const refreshBtn = requireElement("refresh-stats-btn");
+const statMutant = requireElement("stat-mutant");
+const statHuman = requireElement("stat-human");
+const statRatio = requireElement("stat-ratio");
+const statsError = requireElement("stats-error");
 
 // Parse the textarea into an array of trimmed, non-empty, upper-cased rows.
-function parseDna(raw: string): string[] {
+function parseDna(raw) {
   return raw
     .split("\n")
     .map((line) => line.trim().toUpperCase())
@@ -44,33 +32,33 @@ function parseDna(raw: string): string[] {
 }
 
 // Show a message in the result region with a given visual state.
-function showResult(message: string, state: ResultState = "info"): void {
+function showResult(message, state = "info") {
   resultEl.textContent = message;
   resultEl.className = `result show ${state}`;
 }
 
 // Try to extract a human-readable error message from a response body.
-function extractError(body: unknown): string | null {
-  if (body && typeof body === "object" && typeof (body as ErrorBody).error === "string") {
-    return (body as ErrorBody).error as string;
+function extractError(body) {
+  if (body && typeof body === "object" && typeof body.error === "string") {
+    return body.error;
   }
   return null;
 }
 
 // Read a response body as JSON, tolerating empty or non-JSON payloads.
-async function readJson(response: Response): Promise<unknown> {
+async function readJson(response) {
   const text = await response.text();
   if (!text) {
     return null;
   }
   try {
-    return JSON.parse(text) as unknown;
+    return JSON.parse(text);
   } catch {
     return null;
   }
 }
 
-async function handleSubmit(event: SubmitEvent): Promise<void> {
+async function handleSubmit(event) {
   event.preventDefault();
 
   const rows = parseDna(textarea.value);
@@ -115,13 +103,13 @@ async function handleSubmit(event: SubmitEvent): Promise<void> {
     showResult("Could not reach the server. Check your connection and try again.", "error");
   } finally {
     checkBtn.disabled = false;
-    // Refresh stats after a successful check so the panel stays current.
+    // Refresh stats after a check so the panel stays current.
     void loadStats();
   }
 }
 
 // Format the ratio to a few decimal places; guard against non-numbers.
-function formatRatio(value: number): string {
+function formatRatio(value) {
   const n = Number(value);
   if (!isFinite(n)) {
     return "—";
@@ -129,7 +117,7 @@ function formatRatio(value: number): string {
   return n.toFixed(3);
 }
 
-async function loadStats(): Promise<void> {
+async function loadStats() {
   statsError.textContent = "";
   refreshBtn.disabled = true;
 
@@ -141,7 +129,7 @@ async function loadStats(): Promise<void> {
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    const data = (await response.json()) as StatsResponse;
+    const data = await response.json();
     statMutant.textContent = String(data.count_mutant_dna);
     statHuman.textContent = String(data.count_human_dna);
     statRatio.textContent = formatRatio(data.ratio);
