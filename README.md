@@ -176,7 +176,8 @@ point it at this repo, and apply — it builds `backend/cmd/server` from the rep
 root and serves the API + frontend, health-checked at `/healthz`. Render injects
 `PORT`; the server reads it.
 
-> **Live demo:** _\<add the Render URL here after the first deploy\>_
+> **Live demo:** <https://mutant-detector-wc41.onrender.com> — on Render's free
+> tier, so the first request after an idle period may take ~30–60s to wake.
 
 **Trade-off (documented):** Render's free tier has **no persistent disk**, so the
 SQLite database (`DB_PATH=/tmp/mutant.db`) is **ephemeral** — the stored DNAs and
