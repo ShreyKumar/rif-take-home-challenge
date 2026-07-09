@@ -126,8 +126,10 @@ func (s *SQLiteStore) Close() error {
 	return s.db.Close()
 }
 
-// hashDNA returns the hex-encoded SHA-256 of the normalized DNA string, used
-// as the dedup key.
+// hashDNA returns the hex-encoded SHA-256 of the caller-supplied DNA string,
+// used as the dedup key. It hashes the argument as-is and does not itself
+// normalize; callers pass the already-canonical sequence (the API layer
+// validates uppercase A/T/C/G and joins rows with a fixed delimiter upstream).
 func hashDNA(dna string) string {
 	sum := sha256.Sum256([]byte(dna))
 	return hex.EncodeToString(sum[:])

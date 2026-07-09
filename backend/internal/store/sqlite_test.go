@@ -122,8 +122,13 @@ func TestPersistenceAcrossReopen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New(first): %v", err)
 	}
+	// Asymmetric fixture (2 mutant, 1 human) so the reseed assertion is NOT
+	// invariant under a swapped column-to-counter mapping in seedCounters; a
+	// symmetric (1,1) fixture would pass even if the two SUM projections were
+	// transposed. The duplicate also proves dedup survives the reopen.
 	for _, rec := range []contract.Record{
 		{DNA: "AAAA\nCCCC\nGGGG\nTTTT", IsMutant: true},
+		{DNA: "GGGG\nTTTT\nAAAA\nCCCC", IsMutant: true},
 		{DNA: "ATGC\nGCAT\nTACG\nCGTA", IsMutant: false},
 		{DNA: "ATGC\nGCAT\nTACG\nCGTA", IsMutant: false}, // duplicate
 	} {
@@ -139,8 +144,8 @@ func TestPersistenceAcrossReopen(t *testing.T) {
 	}
 	defer second.Close()
 
-	if m, h := mustStats(t, second); m != 1 || h != 1 {
-		t.Fatalf("reopened stats = (%d, %d), want (1, 1)", m, h)
+	if m, h := mustStats(t, second); m != 2 || h != 1 {
+		t.Fatalf("reopened stats = (%d, %d), want (2, 1)", m, h)
 	}
 }
 
