@@ -1,34 +1,71 @@
 # RIF Mutant Detector
 
-A Go backend plus a static frontend that detects whether a subject is a mutant from their DNA matrix.
+A Go backend plus a static frontend that detects whether a subject is a mutant
+from their DNA matrix, exposes a small REST API, persists de-duplicated results
+in SQLite, and reports usage statistics.
 
-See [requirements.md](./requirements.md) for the full requirements and [plan.md](./plan.md) for the phased implementation plan.
+- **Algorithm** — `IsMutant(dna)`: an O(N²) single-pass scan for four-in-a-row
+  sequences across all four orientations, with early-exit.
+- **API** — `POST /mutant/` and `GET /stats/`, plus the static UI at `/`.
+- **Storage** — embedded SQLite behind a `Store` interface, one row per unique
+  DNA, with O(1) usage counters.
 
-## Run
+See [requirements.md](./requirements.md) for the full spec (and the architecture
+diagram in §10) and [plan.md](./plan.md) for the phased delivery.
 
-The app has two parts:
+## Architecture
 
-- **Backend** — a Go API server (`backend/`).
-- **Frontend** — a static site (`frontend/`: `index.html`, `styles.css`, `app.js`).
+```
+Browser ──HTTP──> Go server (stateless) ──> Store interface ──> SQLite (UNIQUE dna_hash)
+  static UI          ├─ GET  /          FileServer(frontend/)      + in-memory O(1)
+  fetch()            ├─ POST /mutant/    validate → detect → save     atomic counters
+                     └─ GET  /stats/     read counters (O(1))
+```
 
-The frontend talks to the API over **same-origin relative paths** (`POST /mutant/`, `GET /stats/`), so the Go server serves both the static assets and the API from a single origin — no CORS or extra config needed. The static directory is configurable via `FRONTEND_DIR` (default `../frontend`).
+The frontend calls the API over **same-origin relative paths**, so a single Go
+process serves both the static assets and the API — no CORS, no second server.
+Full component and sequence diagrams are in [requirements.md §10](./requirements.md#10-architecture).
 
-### Prerequisites
+## Project structure
+
+```
+backend/           self-contained Go module (backend/go.mod)
+  cmd/server/      main(): config → assemble → ListenAndServe + graceful shutdown
+  internal/mutant/ IsMutant algorithm
+  internal/api/    POST /mutant/ and GET /stats/ handlers
+  internal/store/  Store interface + SQLite impl (dedup + counters)
+  internal/server/ composition root: assembles handlers + mounts routes
+  internal/config/ env-var configuration
+  internal/contract/ shared types (Store, Detector, DTOs)
+frontend/          static HTML + vanilla JS + hand-written CSS (no build step)
+loadtest/          dependency-free load harness + measured results
+Makefile           build / run / test / loadtest
+```
+
+## Prerequisites
 
 - [Go](https://go.dev/dl/) 1.25+
+- Optional: Docker (to run the containerized build)
 
-### Run both (integrated)
+## Build & run
 
-Start the backend from the `backend/` directory; it serves the API and the frontend at `/`:
+The Go server serves the API **and** the frontend at `/` from one process:
 
 ```sh
 cd backend
 go run ./cmd/server
+# → listening on :8080
 ```
 
-Then open <http://localhost:8080> — the UI, `/mutant/`, and `/stats/` are all on that one origin.
+Open <http://localhost:8080> — the UI, `POST /mutant/`, and `GET /stats/` are all
+on that one origin. Or use the Makefile from the repo root:
 
-Configuration is read from the environment:
+```sh
+make run      # go run ./cmd/server
+make build    # → backend/bin/server
+```
+
+### Configuration (environment variables)
 
 | Variable       | Default       | Purpose                                  |
 | -------------- | ------------- | ---------------------------------------- |
@@ -36,5 +73,128 @@ Configuration is read from the environment:
 | `DB_PATH`      | `mutant.db`   | SQLite database file path                |
 | `FRONTEND_DIR` | `../frontend` | Directory of static assets served at `/` |
 
-The full README — build/run/test instructions, `curl` examples, and the scalability narrative — lands in Phase 8.
-> **Status:** the server currently exposes `/healthz` on `:8080`; static-file serving at `/` and the `/mutant/` and `/stats/` endpoints are mounted in later phases (see [plan.md](./plan.md)). The commands above describe how each component is run. The full README — build/test instructions, `curl` examples, and the scalability narrative — lands in Phase 8.
+## API
+
+| Method | Path       | Success                    | Errors                          |
+| ------ | ---------- | -------------------------- | ------------------------------- |
+| `POST` | `/mutant/` | `200` mutant · `403` human | `400` invalid · `405` non-POST  |
+| `GET`  | `/stats/`  | `200` + stats JSON         | `405` non-GET                   |
+| `GET`  | `/`        | `200` + HTML UI            | —                               |
+
+The **HTTP status code is the authoritative contract**; the JSON body is advisory.
+
+### `POST /mutant/`
+
+Mutant → `200`:
+
+```sh
+curl -i -X POST http://localhost:8080/mutant/ \
+  -H 'Content-Type: application/json' \
+  -d '{"dna":["ATGCGA","CAGTGC","TTATGT","AGAAGG","CCCCTA","TCACTG"]}'
+# HTTP/1.1 200 OK
+# {"mutant":true}
+```
+
+Human → `403`:
+
+```sh
+curl -i -X POST http://localhost:8080/mutant/ \
+  -H 'Content-Type: application/json' \
+  -d '{"dna":["ATGC","GCAT","TACG","CGTA"]}'
+# HTTP/1.1 403 Forbidden
+# {"mutant":false}
+```
+
+Invalid (non-square) → `400`; non-POST → `405` with `Allow: POST`:
+
+```sh
+curl -i -X POST http://localhost:8080/mutant/ -d '{"dna":["ATGC","CAG"]}'
+# HTTP/1.1 400 Bad Request
+# {"error":"dna must be a square matrix: every row length must equal the number of rows"}
+
+curl -i http://localhost:8080/mutant/
+# HTTP/1.1 405 Method Not Allowed
+# Allow: POST
+```
+
+### `GET /stats/`
+
+```sh
+curl -s http://localhost:8080/stats/
+# {"count_mutant_dna":1,"count_human_dna":1,"ratio":1}
+```
+
+`ratio = count_mutant_dna / count_human_dna` (matches the brief's `40/100 = 0.4`),
+and is `0.0` when there are zero humans.
+
+## Test
+
+```sh
+make test    # go test -race with coverage, prints the total
+```
+
+or directly:
+
+```sh
+cd backend && go test -race -covermode=atomic -coverpkg=./internal/... ./...
+```
+
+CI enforces a **≥ 80% backend coverage gate** on every PR
+([.github/workflows/ci.yml](./.github/workflows/ci.yml)); the suite currently sits
+well above it. The frontend is verified manually (no JS test suite).
+
+## Load testing
+
+A dependency-free Go load harness lives in [`loadtest/`](./loadtest):
+
+```sh
+make loadtest    # builds + starts the server, drives reads + mixed load, tears down
+```
+
+Measured numbers and the honest caveats are in
+[loadtest/RESULTS.md](./loadtest/RESULTS.md): the O(1) `/stats/` read path scales
+to ~160k req/s on one machine, while writes are bounded by SQLite's single writer
+connection — the exact bottleneck the scale-path below removes.
+
+## Docker
+
+A multi-stage image builds a static binary (pure-Go SQLite, no cgo) and bundles
+the frontend. Build from the **repo root** (context needs both `backend/` and
+`frontend/`):
+
+```sh
+docker build -f backend/Dockerfile -t mutant-detector .
+docker run --rm -p 8080:8080 mutant-detector
+# → http://localhost:8080
+```
+
+## Scalability (NFR-2)
+
+Addressed by design; measured on one node in [loadtest/RESULTS.md](./loadtest/RESULTS.md).
+
+- **Stateless server → horizontal scale.** No per-request state lives in the
+  process, so the single static binary replicates behind a load balancer.
+- **O(1) statistics.** `/stats/` reads in-memory atomic counters seeded once at
+  startup — never a `COUNT(*)` scan — so read volume scales with cores.
+- **Dedup shields the database.** A `UNIQUE(dna_hash)` + upsert means repeated
+  DNA never creates a second row or double-counts, and can be fronted by a cache.
+- **Documented scale-path.** The `Store` interface is the seam: swap SQLite for
+  **Postgres (pooled writers) + a Redis dedup cache/queue** behind the same
+  interface for write throughput, with no change to the algorithm or handlers.
+  SQLite is the honest local/demo default (single writer connection); it is the
+  measured write bottleneck, not a design ceiling.
+
+## Documented decisions
+
+Judgment calls where the brief is silent or ambiguous (full list in
+[requirements.md §7](./requirements.md#7-assumptions--documented-decisions)):
+
+1. **Overlap counting** — overlapping four-base windows count independently (a
+   run of five = two sequences).
+2. **`ratio = mutants ÷ humans`** (per the `40/100 = 0.4` example), not ÷ total.
+3. **`400` for invalid input** — the brief only mandates 200/403 for valid DNA;
+   malformed input gets 400 as sound REST practice.
+4. **`ratio = 0.0` when there are zero humans.**
+5. **Uppercase `A/T/C/G` only.**
+6. **SQLite** as the default store, interface-abstracted for the Postgres scale-path.
+7. **Small JSON body** on `/mutant/`, with the **status code authoritative**.
