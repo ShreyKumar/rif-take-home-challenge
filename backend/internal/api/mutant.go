@@ -18,6 +18,12 @@ import (
 // Store hashes and persists.
 const dnaRowDelimiter = "\n"
 
+// maxBodyBytes caps the request body. A valid N×N A/T/C/G matrix is tiny, so a
+// 1 MiB ceiling accepts any legitimate payload while bounding the memory (and,
+// transitively, the O(N²) work) a hostile client can force per request — the
+// unbounded-body / compute DoS guard for NFR-2 burst traffic.
+const maxBodyBytes = 1 << 20
+
 // NewMutantHandler builds the POST /mutant/ handler. It validates the payload,
 // runs the injected detector, persists the result via the injected store, and
 // answers 200 (mutant) / 403 (human) / 400 (invalid) / 405 (non-POST). The
@@ -25,13 +31,30 @@ const dnaRowDelimiter = "\n"
 func NewMutantHandler(detect contract.Detector, store contract.Store) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", http.MethodPost)
 			writeMutantError(w, http.StatusMethodNotAllowed, "method not allowed; use POST")
 			return
 		}
 
+		// Bound the body before reading a single byte, so an oversized payload
+		// is rejected rather than buffered into memory.
+		r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+
+		dec := json.NewDecoder(r.Body)
 		var req contract.MutantRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := dec.Decode(&req); err != nil {
+			var maxErr *http.MaxBytesError
+			if errors.As(err, &maxErr) {
+				writeMutantError(w, http.StatusBadRequest, "request body too large")
+				return
+			}
 			writeMutantError(w, http.StatusBadRequest, "malformed JSON body")
+			return
+		}
+		// Reject trailing data after the first JSON value so a body that is not
+		// a single well-formed document is treated as malformed (FR-2.4).
+		if dec.More() {
+			writeMutantError(w, http.StatusBadRequest, "request body must contain a single JSON object")
 			return
 		}
 
