@@ -58,8 +58,7 @@ and tail latency grows with queueing — **still 0% errors**.
   removes: swap the `Store` implementation for Postgres (pooled writers) + a
   dedup cache, keeping the same interface, and the stateless server replicates
   horizontally behind a load balancer. See the README's scalability section.
-- **Zero 5xx** at every level — correctness holds under sustained concurrent load
-  (see also the `-race` concurrency invariants test, `make stress`).
+- **Zero 5xx** at every level — correctness holds under sustained concurrent load.
 
 ## Reproduce
 
