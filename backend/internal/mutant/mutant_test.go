@@ -54,6 +54,29 @@ func TestIsMutant(t *testing.T) {
 			want: true,
 		},
 		{
+			// Exactly one vertical sequence (col 0 = AAAA) and nothing else:
+			// pins the FR-1.4 threshold for the vertical orientation.
+			name: "single vertical sequence is not mutant",
+			dna:  []string{"ACGT", "AGTC", "ATCG", "ACGT"},
+			want: false,
+		},
+		{
+			// Exactly one ↘ diagonal ((0,0)…(3,3) = AAAA) and nothing else:
+			// pins the FR-1.4 threshold for the down-right orientation.
+			name: "single down-right diagonal is not mutant",
+			dna:  []string{"ACGT", "CACG", "GCAC", "TGCA"},
+			want: false,
+		},
+		{
+			// Ragged input whose scan actually forces an out-of-bounds column
+			// lookahead: at (0,0) the ↘ step reads row1[1] of the 1-char row
+			// "A". This exercises runFrom's bounds guard and asserts no panic +
+			// false, unlike a case that early-exits at (0,0) (FR-1.7).
+			name: "ragged forces out-of-bounds lookahead",
+			dna:  []string{"ATCG", "A", "T", "C"},
+			want: false,
+		},
+		{
 			// N<4 can never be a mutant (FR-1.7) — matches requirements §3.
 			name: "too small is not mutant",
 			dna:  []string{"ATG", "CAG", "TTA"},
