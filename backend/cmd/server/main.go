@@ -19,9 +19,15 @@ import (
 func main() {
 	cfg := config.Load()
 
+	handler, closer, err := server.New(cfg)
+	if err != nil {
+		log.Fatalf("build server: %v", err)
+	}
+	defer closer.Close()
+
 	srv := &http.Server{
 		Addr:    ":" + cfg.Port,
-		Handler: server.New(),
+		Handler: handler,
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
