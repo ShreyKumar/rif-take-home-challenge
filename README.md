@@ -39,7 +39,7 @@ backend/           self-contained Go module (backend/go.mod)
   internal/contract/ shared types (Store, Detector, DTOs)
 frontend/          static HTML + vanilla JS + hand-written CSS (no build step)
 loadtest/          dependency-free load harness + measured results
-Makefile           build / run / test / stress / loadtest
+Makefile           build / run / test / loadtest
 ```
 
 ## Prerequisites
@@ -142,12 +142,6 @@ cd backend && go test -race -covermode=atomic -coverpkg=./internal/... ./...
 CI enforces a **≥ 80% backend coverage gate** on every PR
 ([.github/workflows/ci.yml](./.github/workflows/ci.yml)); the suite currently sits
 well above it. The frontend is verified manually (no JS test suite).
-
-Concurrency correctness (dedup + counters under a `-race` goroutine storm):
-
-```sh
-make stress
-```
 
 ## Load testing
 
