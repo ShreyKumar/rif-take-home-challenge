@@ -155,6 +155,10 @@ Addressed by **design and documentation** (diagram + README), not a benchmark:
 - **Measured coverage > 80%**, with assertions that test behaviour (no coverage padding).
 - **Enforced in CI on every PR** (GitHub Actions) for the **backend** only — a PR under 80% fails the
   check; the frontend is verified manually. *(The workflow is created in plan phase P0.)*
+- **Coverage gate blocks merges:** GitHub branch protection rule on `main` requires the
+  `CI / Test and coverage gate` status check to pass. Use `scripts/setup-branch-protection.sh` to enforce
+  (requires GitHub admin/maintain access). Note: private repos on GitHub's free plan return 403; either
+  make the repo public, upgrade to GitHub Pro, or configure via web UI on a Pro plan.
 
 ### NFR-4 — Documentation & diagram
 - `README.md`: build / run / test instructions reproducible from a clean checkout, plus example
