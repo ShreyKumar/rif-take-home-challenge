@@ -40,6 +40,7 @@ flowchart LR
         P5 --> P9[P9 · Concurrency test]
         P5 --> P10[P10 · Load harness + perf]
         P8 --> P11[P11 · Render deploy]
+        P0 --> P12[P12 · Coverage gate enforcement]
     end
 ```
 
@@ -56,6 +57,8 @@ flowchart LR
 - **Wave 2 — after P5:** `P7`, `P8`, `P9`, `P10` run in parallel; none depend on each other.
 - **P11** follows once `P8` (docs) lands — the deploy note it adds to the README needs `P8`'s wording
   in place before it can point at a live URL.
+- **P12** depends only on `P0` — the coverage gate it enforces already exists there, so it can start
+  any time, independent of every other phase.
 
 Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **4 tracks** in Wave 2.
 
@@ -226,6 +229,28 @@ Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **4 tracks** in Wave 2.
   run still needs no external services).
 - **Done when:** the Render service builds and serves `/healthz`, `/mutant/`, `/stats/`, and `/` from
   the live URL; the README links it.
+
+## Phase 12 — Enforce the coverage gate as a required check
+**PR:** `chore: document coverage gate enforcement` · **~20 LOC docs** · **deps:** P0
+
+- **Goal:** close the gap between the coverage gate that already exists (P0's `ci.yml` "Test and
+  coverage gate" job, which fails the job below 80%) and it actually **blocking merges**.
+- **Covers:** the enforcement half of **NFR-3** — detection already works from P0; this phase is about
+  making a red check un-mergeable.
+- **Reuses, doesn't duplicate:** no new workflow — `ci.yml`'s existing job stays the single source of
+  truth for coverage. Verified that classic branch-protection required-status-checks are **unavailable
+  on this repo today** (`gh api repos/.../branches/main/protection` → 403, "Upgrade to GitHub Pro or
+  make this repository public") because it's private on GitHub's free plan.
+- **Documented trade-off / open decision:** enforcement requires picking one of — (a) make the repo
+  public, (b) upgrade to GitHub Pro, or (c) accept **soft enforcement** (the job still fails and shows
+  red on every PR touching `backend/**`; staying green relies on not merging a red PR, not a
+  GitHub-side block). Until one is chosen, `requirements.md` NFR-3 should say enforcement is soft
+  rather than asserting the gate is a hard block.
+- **Adds (once a choice is made):** either a visibility change plus the `CI / Test and coverage gate`
+  check marked required in Settings → Branches, or an explicit NFR-3 caveat documenting soft
+  enforcement — whichever path is chosen.
+- **Done when:** either a PR that intentionally drops coverage below 80% is blocked from merging by
+  GitHub itself, or `requirements.md` explicitly documents that enforcement is soft and why.
 
 ---
 
