@@ -39,6 +39,7 @@ flowchart LR
         P5 --> P8[P8 · Docs]
         P5 --> P9[P9 · Concurrency test]
         P5 --> P10[P10 · Load harness + perf]
+        P8 --> P11[P11 · Render deploy]
     end
 ```
 
@@ -53,6 +54,8 @@ flowchart LR
   once P5 is merged.
 - **Barrier — P5:** injects the real algorithm + store into the handlers and mounts every route.
 - **Wave 2 — after P5:** `P7`, `P8`, `P9`, `P10` run in parallel; none depend on each other.
+- **P11** follows once `P8` (docs) lands — the deploy note it adds to the README needs `P8`'s wording
+  in place before it can point at a live URL.
 
 Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **4 tracks** in Wave 2.
 
@@ -206,35 +209,23 @@ Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **4 tracks** in Wave 2.
 - **Pre-flight:** verify k6 / `vegeta` invocation against current docs before scripting.
 - **Done when:** `make loadtest` runs locally; the README has a filled results table + caveat.
 
-## Phase 11 — Frontend TypeScript migration
-**PR:** `feat: migrate frontend to TypeScript` · **~150 LOC** · **deps:** P6
+## Phase 11 — Render deployment (free tier)
+**PR:** `chore: render deploy config` · **~30 LOC + docs** · **deps:** P8
 
-- **Goal:** replace the vanilla-JS frontend logic with strict-mode TypeScript, revising the original
-  P6 tech-stack decision while keeping its no-framework, no-bundler philosophy intact.
-- **Covers:** revises **FR-5.6**, adds **FR-5.7** (requirements.md), amends the Tech stack decision
-  (requirements.md §1) and the out-of-scope note (§8) — see requirements.md §7 item 8 for the full
-  rationale.
-- **Adds:** `frontend/src/app.ts` — a typed, 1:1 port of the former `frontend/app.js` (same DOM ids,
-  same control flow, same `/mutant/` and `/stats/` calls); `StatsResponse` / `ErrorBody` interfaces for
-  the two JSON payloads; a small `requireElement<T>()` helper so DOM lookups are typed instead of
-  `HTMLElement | null`. `frontend/tsconfig.json` (`strict: true`, `target`/`module: ES2020`,
-  `rootDir: src`, `outDir: .`). `frontend/package.json` (`typescript` devDependency, `build` / `watch`
-  scripts). `frontend/.gitignore` (`node_modules/`, the compiled `app.js` + `app.js.map`,
-  `*.tsbuildinfo`). **Removes** the committed `frontend/app.js` — it's now a generated build artifact.
-  `index.html`'s script tag switches from `defer` to `type="module"`.
-- **Run/build impact:** the frontend now needs one local build step before there's anything to serve:
-  `cd frontend && npm install && npm run build`. No change to the backend or the wire contract — same
-  DOM ids, same fetch calls, same status-code handling as the pre-migration JS.
-- **Tests:** unchanged — the frontend is still verified manually (NFR-3's coverage gate stays
-  backend-only). `tsc` compiling clean under `strict` is the type-safety check; manual smoke test is
-  build → serve `frontend/` (standalone, or via the assembled backend once P5 lands) → confirm the DNA
-  form and stats panel behave identically to the pre-migration JS version.
-- **Out of scope (documented, not silently dropped):** no CI job runs the frontend build yet — `ci.yml`
-  still filters on `backend/**` only (NFR-3), so a `tsc` type error would not currently fail a PR. Left
-  as a follow-up rather than added here to keep this phase scoped to the language migration itself.
-- **Done when:** `npm run build` produces `frontend/app.js` from `frontend/src/app.ts` with zero `tsc`
-  errors under `strict`; the page loads with no console errors; manual DNA-check / stats behavior
-  matches P6.
+- **Goal:** a free, public live-demo URL for the assembled service — a convenience on top of the
+  graded work, not a substitute for it.
+- **Covers:** none of the graded `FR-*`/`NFR-*` directly; layers a demo-hosting note on **NFR-6**
+  (portability) without altering the graded local/default config.
+- **Adds:** `render.yaml` (Blueprint) at the repo root — free-tier web service, `buildCommand`/
+  `startCommand` building `backend/cmd/server`, `healthCheckPath: /healthz`, `FRONTEND_DIR=frontend`
+  (Render keeps `rootDir` at the repo root so both `backend/` and `frontend/` stay visible to the
+  service — differs from the local default of `../frontend`). A short deployment note in
+  `requirements.md` and the README (added in P8) documenting the live URL.
+- **Documented trade-off:** Render's free tier has no persistent disk, so `mutant.db` resets on idle
+  spin-down (~15 min) or redeploy — acceptable for a demo link; does **not** change NFR-6 (the local
+  run still needs no external services).
+- **Done when:** the Render service builds and serves `/healthz`, `/mutant/`, `/stats/`, and `/` from
+  the live URL; the README links it.
 
 ---
 
@@ -246,7 +237,7 @@ Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **4 tracks** in Wave 2.
 | FR-2 — `/mutant/` | P3 |
 | FR-3 — persistence + dedup | P2 |
 | FR-4 — `/stats/` | P2 (counters) + P4 (endpoint) |
-| FR-5 — frontend | P5 (serving) + P6 (UI) + P11 (TypeScript migration) |
+| FR-5 — frontend | P5 (serving) + P6 (UI) |
 | V-1…V-3 — validation | P3 |
 | Data model (§5) | P2 |
 | API contract (§3) | P3, P4 |
