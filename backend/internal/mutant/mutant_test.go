@@ -27,6 +27,12 @@ func TestIsMutant(t *testing.T) {
 			want: false,
 		},
 		{
+			// Exactly 3 bases (not 4) is below the threshold and should return false.
+			name: "three in a sequence is not mutant",
+			dna:  []string{"AAAG", "GCAT", "TACG", "CGTA"},
+			want: false,
+		},
+		{
 			// FR-1.5 overlap: one physical run of five equal bases is two
 			// overlapping windows, which alone makes the subject a mutant.
 			name: "overlapping run of five counts twice",
