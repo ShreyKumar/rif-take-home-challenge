@@ -12,4 +12,17 @@ cd backend && go run ./cmd/server
 
 This serves the health check at `/healthz` on port `:8080` (override with `PORT`).
 
+## Frontend
+
+The frontend is written in TypeScript (`frontend/src/app.ts`) and compiled to plain JS
+(`frontend/app.js`) via `tsc` — no framework, no bundler. The compiled `app.js` is a generated build
+artifact and is not committed, so build it once before serving the frontend (standalone or via the
+backend):
+
+```sh
+cd frontend
+npm install
+npm run build   # or: npm run watch
+```
+
 The full README — build/run/test instructions, `curl` examples, and the scalability narrative — lands in Phase 8.

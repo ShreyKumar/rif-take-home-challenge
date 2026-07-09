@@ -1,0 +1,13 @@
+{
+  "name": "rif-mutant-detector-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Static TypeScript frontend for the RIF Mutant Detector, compiled to JS and served by the Go backend.",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
