@@ -36,18 +36,5 @@ Configuration is read from the environment:
 | `DB_PATH`      | `mutant.db`   | SQLite database file path                |
 | `FRONTEND_DIR` | `../frontend` | Directory of static assets served at `/` |
 
-## Frontend
-
-The frontend is written in TypeScript (`frontend/src/app.ts`) and compiled to plain JS
-(`frontend/app.js`) via `tsc` — no framework, no bundler. The compiled `app.js` is a generated build
-artifact and is not committed, so build it once before serving the frontend (standalone or via the
-backend):
-
-```sh
-cd frontend
-npx tsc           # compile to app.js
-npx tsc --watch   # or: watch for changes
-```
-
 The full README — build/run/test instructions, `curl` examples, and the scalability narrative — lands in Phase 8.
 > **Status:** the server currently exposes `/healthz` on `:8080`; static-file serving at `/` and the `/mutant/` and `/stats/` endpoints are mounted in later phases (see [plan.md](./plan.md)). The commands above describe how each component is run. The full README — build/test instructions, `curl` examples, and the scalability narrative — lands in Phase 8.
