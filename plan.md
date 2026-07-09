@@ -39,6 +39,7 @@ flowchart LR
         P5 --> P8[P8 · Docs]
         P5 --> P9[P9 · Concurrency test]
         P5 --> P10[P10 · Load harness + perf]
+        P8 --> P11[P11 · Render deploy]
     end
 ```
 
@@ -53,6 +54,8 @@ flowchart LR
   once P5 is merged.
 - **Barrier — P5:** injects the real algorithm + store into the handlers and mounts every route.
 - **Wave 2 — after P5:** `P7`, `P8`, `P9`, `P10` run in parallel; none depend on each other.
+- **P11** follows once `P8` (docs) lands — the deploy note it adds to the README needs `P8`'s wording
+  in place before it can point at a live URL.
 
 Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **4 tracks** in Wave 2.
 
@@ -205,6 +208,24 @@ Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **4 tracks** in Wave 2.
   goal. The README (P8) links to this file, so P10 doesn't block on P8.
 - **Pre-flight:** verify k6 / `vegeta` invocation against current docs before scripting.
 - **Done when:** `make loadtest` runs locally; the README has a filled results table + caveat.
+
+## Phase 11 — Render deployment (free tier)
+**PR:** `chore: render deploy config` · **~30 LOC + docs** · **deps:** P8
+
+- **Goal:** a free, public live-demo URL for the assembled service — a convenience on top of the
+  graded work, not a substitute for it.
+- **Covers:** none of the graded `FR-*`/`NFR-*` directly; layers a demo-hosting note on **NFR-6**
+  (portability) without altering the graded local/default config.
+- **Adds:** `render.yaml` (Blueprint) at the repo root — free-tier web service, `buildCommand`/
+  `startCommand` building `backend/cmd/server`, `healthCheckPath: /healthz`, `FRONTEND_DIR=frontend`
+  (Render keeps `rootDir` at the repo root so both `backend/` and `frontend/` stay visible to the
+  service — differs from the local default of `../frontend`). A short deployment note in
+  `requirements.md` and the README (added in P8) documenting the live URL.
+- **Documented trade-off:** Render's free tier has no persistent disk, so `mutant.db` resets on idle
+  spin-down (~15 min) or redeploy — acceptable for a demo link; does **not** change NFR-6 (the local
+  run still needs no external services).
+- **Done when:** the Render service builds and serves `/healthz`, `/mutant/`, `/stats/`, and `/` from
+  the live URL; the README links it.
 
 ---
 
