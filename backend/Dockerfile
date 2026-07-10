@@ -15,7 +15,7 @@ RUN go mod download
 COPY backend/ ./
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -o /out/server ./cmd/server
 
-FROM alpine:3.20
+FROM alpine:3.22
 RUN adduser -D -u 10001 app && mkdir -p /app/data && chown app /app/data
 WORKDIR /app
 
