@@ -25,9 +25,17 @@ func main() {
 	}
 	defer closer.Close()
 
+	// Explicit timeouts: Go's zero values are unlimited, which lets a client
+	// hold a connection open indefinitely (slowloris / idle-connection
+	// exhaustion). The API only ever exchanges tiny JSON bodies (≤ 1 MiB by
+	// MaxBytesReader), so these bounds are generous for legitimate traffic.
 	srv := &http.Server{
-		Addr:    ":" + cfg.Port,
-		Handler: handler,
+		Addr:              ":" + cfg.Port,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
