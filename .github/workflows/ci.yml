@@ -1,16 +1,13 @@
 name: CI
 
+# No path filter: the docs promise the coverage gate runs on every PR, and the
+# job is cheap — a filter would silently skip frontend/loadtest/docs-only PRs
+# (and deadlock a required check in branch protection).
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/ci.yml'
   push:
     branches: [main]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/ci.yml'
 
 permissions:
   contents: read
