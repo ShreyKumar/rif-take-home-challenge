@@ -5,9 +5,8 @@ human is a mutant from their DNA sequence, with a REST API, persistence, usage s
 frontend, and supporting docs.
 
 - **Backend:** Go HTTP server (standard library).
-- **Frontend:** static HTML + strict-mode TypeScript (compiled to plain JS via `tsc`) + minimal
-  hand-written CSS, served by the Go server.
-- **Storage:** embedded SQLite behind a storage interface (with a documented Postgres scale-path).
+- **Frontend:** static HTML + vanilla JavaScript + minimal hand-written CSS, served by the Go server.
+- **Storage:** embedded SQLite behind a storage interface.
 
 Requirement IDs (`FR-*`, `NFR-*`) are used so each item is individually testable and traceable to
 the rubric (see [RUBRIC.md](./RUBRIC.md)).
@@ -18,11 +17,11 @@ the rubric (see [RUBRIC.md](./RUBRIC.md)).
 
 | Concern | Decision | Notes |
 |---|---|---|
-| Language | **Go** (latest stable; requires ≥ 1.22 for `net/http` method+pattern routing) | Single static binary, near-stdlib |
+| Language | **Go** (`go.mod` requires 1.25) | Single static binary, near-stdlib; `net/http` method+pattern routing |
 | HTTP router | Standard library `net/http` `ServeMux` | No web framework |
 | Algorithm | Pure Go package, zero dependencies | Unit-testable in isolation |
-| Storage | **SQLite** via `modernc.org/sqlite` (pure Go, no cgo), behind a `Store` interface | Postgres/Redis swap documented for scale |
-| Frontend | Static **HTML + TypeScript (compiled to JS) + minimal CSS** in `frontend/`, served by the backend at `/` via `http.FileServer` | Source is `frontend/src/app.ts` (`strict: true`), compiled to `frontend/app.js` via `tsc` — the only build step; no framework, no bundler; compiled output served from disk (see §9) |
+| Storage | **SQLite** via `modernc.org/sqlite` (pure Go, no cgo), behind a `Store` interface | Interface seam for a future store swap |
+| Frontend | Static **HTML + vanilla JavaScript + minimal hand-written CSS** in `frontend/`, served by the backend at `/` via `http.FileServer` | `frontend/app.js` is committed, hand-written — no framework, no bundler, no build step; served from disk (see §9) |
 | Tests | Standard library `testing` + `net/http/httptest`, `go test -cover` | Target > 80% coverage |
 | Config | Environment variables (e.g. `PORT`, `DB_PATH`) | 12-factor friendly |
 | Docs | `README.md` + Mermaid architecture diagram | Reproducible run instructions |
@@ -88,9 +87,8 @@ the rubric (see [RUBRIC.md](./RUBRIC.md)).
 - **FR-5.4** Surfaces validation errors (e.g. the server's `400` message for non-square / illegal input).
 - **FR-5.5** Optionally displays live stats by calling `GET /stats/`.
 - **FR-5.6** Styling is **minimal, hand-written CSS** — no framework, no CSS build step.
-- **FR-5.7** Frontend logic is written in **TypeScript** (`frontend/src/app.ts`, `strict: true`),
-  compiled to plain JS (`frontend/app.js`) via `tsc` — no other framework or bundler *(revised
-  decision — see §7 item 8)*.
+- **FR-5.7** Frontend logic is **hand-written vanilla JavaScript** (`frontend/app.js`, committed) —
+  no framework, no bundler, no build step.
 
 ---
 
@@ -146,19 +144,20 @@ Optional `stats_counters` table (or in-memory atomic counters) maintaining `muta
 - Target `O(N²)` time and `O(1)`–`O(N)` extra space.
 
 ### NFR-2 — Scalability & burst traffic *(PDF: "consider 100–1M req/s")*
-Addressed by **design and documentation** (diagram + README), not a benchmark:
-- Stateless HTTP server → **horizontally scalable** behind a load balancer; single small binary.
-- Dedup hashing + optional cache to shield the database from repeated writes.
-- **O(1) stats** via maintained counters rather than `COUNT(*)` scans.
-- Documented **scale-path**: swap the SQLite `Store` for Postgres + a cache/queue (e.g. Redis) with
-  the same interface; note the honest trade-off that SQLite is the local/demo choice.
+Addressed by **design**, not a benchmark. The **implemented** properties that support scale:
+- **Stateless request handling** — no per-request state kept in the process.
+- **O(1) stats** via maintained in-memory counters rather than `COUNT(*)` scans.
+- **Dedup at the storage layer** (`UNIQUE(dna_hash)` + upsert) shields the DB from repeated writes.
+
+The horizontal-scale path (load balancer, Postgres/Redis store swap) is **not implemented** — it is
+recorded as future work in [TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md) §11.
 
 ### NFR-3 — Automated tests & coverage *(PDF-emphasized: ">80%")*
 - Unit tests for the algorithm across all four orientations plus the edge cases in FR-1 and §6.
 - Integration tests (`httptest`) for `/mutant/` (200/403/400/405), `/stats/` math, and dedup.
 - **Measured coverage > 80%**, with assertions that test behaviour (no coverage padding).
-- **Enforced in CI on every PR** (GitHub Actions) for the **backend** only — a PR under 80% fails the
-  check; the frontend is verified manually. *(The workflow is created in plan phase P0.)*
+- **Enforced in CI on every PR that touches the backend** (GitHub Actions) — the workflow triggers on
+  `backend/**` changes and fails under 80%; the frontend is verified manually. *(Created in phase P0.)*
 
 ### NFR-4 — Documentation & diagram
 - `README.md`: build / run / test instructions reproducible from a clean checkout, plus example
@@ -190,14 +189,11 @@ Judgment calls made where the PDF is silent or ambiguous (each grader-relevant p
    400 as sound REST practice (FR-2.4).
 4. **`ratio = 0.0` when there are zero humans** (FR-4.4).
 5. **Uppercase `A/T/C/G` only** (V-3); other characters are invalid.
-6. **SQLite** as the default store, interface-abstracted for a Postgres scale-path (NFR-2).
+6. **SQLite** as the default store, abstracted behind a `Store` interface.
 7. **Small JSON body** on `/mutant/` for the UI, with the **status code authoritative** (FR-2.6).
-8. **Frontend language — TypeScript, not vanilla JS** *(revises the original Phase 6 decision)*: the
-   frontend is authored in strict-mode TypeScript (`frontend/src/app.ts`) and compiled to plain JS
-   (`frontend/app.js`) via `tsc`. The compiled output is a generated build artifact (gitignored, not
-   committed) — same no-framework/no-bundler spirit as before, just with a single-file `tsc` compile
-   step ahead of it. Practical effect: `frontend/app.js` no longer exists in git; running or previewing
-   the frontend now requires `cd frontend && npx tsc` first (see plan.md Phase 11).
+8. **Frontend language — vanilla JavaScript** (FR-5.7): the frontend is hand-written vanilla JS
+   (`frontend/app.js`, committed) with no framework, bundler, or build step — so `go run ./cmd/server`
+   alone serves a working app (NFR-6).
 
 ---
 
@@ -205,30 +201,29 @@ Judgment calls made where the PDF is silent or ambiguous (each grader-relevant p
 - Authentication / authorization.
 - An implemented rate limiter or autoscaler (scaling is addressed as **design** only — NFR-2).
 - An actual 1M req/s load test or production infrastructure / IaC.
-- A UI framework, app framework, or bundler (React/Vue/webpack/esbuild/Vite/etc.) — the frontend build
-  step is limited to a single-file `tsc` compile (see §7 item 8).
+- A UI framework, app framework, bundler, or any frontend build step (React/Vue/webpack/tsc/etc.) —
+  the frontend is hand-written vanilla JS served as-is (see §7 item 8).
 
 ---
 
 ## 9. Proposed project structure *(indicative)*
 
-The root contains exactly two code folders — `frontend/` and `backend/` — plus top-level docs.
+The two code folders are `frontend/` and `backend/`, plus a `loadtest/` harness and top-level docs.
 
 ```
 .
-├── frontend/                 # TypeScript source + static assets — no framework, no bundler
-│   ├── src/
-│   │   └── app.ts            # source of truth — compiled by tsc
+├── frontend/                 # static assets — no framework, no bundler, no build step
 │   ├── index.html
-│   ├── app.js                # generated by `npx tsc` — gitignored, not committed
-│   ├── styles.css
-│   └── tsconfig.json         # strict: true, rootDir: src, outDir: .
+│   ├── app.js                # hand-written vanilla JS, committed
+│   └── styles.css
 ├── backend/                  # self-contained Go module (backend/go.mod)
 │   ├── cmd/server/           # main(): wiring, config, http.ListenAndServe
 │   ├── internal/mutant/      # IsMutant algorithm + unit tests
-│   ├── internal/api/         # HTTP handlers: /mutant/, /stats/, static serving
+│   ├── internal/api/         # HTTP handlers: /mutant/, /stats/
+│   ├── internal/server/      # composition root: assembles handlers + static serving
 │   ├── internal/store/       # Store interface, SQLite impl, dedup + counters
 │   └── go.mod
+├── loadtest/                 # dependency-free Go load harness + measured results
 ├── README.md                 # build/run/test + links to this doc
 ├── requirements.md           # this document
 └── .gitignore
@@ -243,21 +238,19 @@ compiled into the binary — an accepted trade-off for the clean two-folder spli
 
 ## 10. Architecture
 
-Base architecture supporting the design targets in NFR-2. **Solid** elements are the default
-local/demo path; **dashed** elements are the horizontal-scale path (documented, not implemented for
-the take-home).
+The architecture **as implemented** — a single stateless Go process serving the API and the static
+frontend, backed by embedded SQLite. (The unbuilt horizontal-scale path — load balancer, Postgres/Redis
+swap — is recorded as future work in [TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md) §11.)
 
 ### 10.1 Component & request flow
 
 ```mermaid
 flowchart TB
     subgraph Client["Client — Browser"]
-        UI["Static frontend<br/>HTML + TypeScript (compiled to JS) + minimal CSS<br/>(served from frontend/ by the backend)"]
+        UI["Static frontend<br/>HTML + vanilla JS + minimal CSS<br/>(served from frontend/ by the backend)"]
     end
 
-    LB["Load Balancer — horizontal scale (design)"]:::scale
-
-    subgraph Server["Go server — stateless, N replicas"]
+    subgraph Server["Go server — single stateless process"]
         Router["net/http ServeMux"]
         Static["GET / → frontend/ via FileServer"]
         MutantH["POST /mutant/ — validate → detect → persist"]
@@ -267,12 +260,11 @@ flowchart TB
     end
 
     subgraph Data["Persistence"]
-        Counters["Dedup cache + atomic counters<br/>in-memory default / Redis scale-path"]:::scale
-        DB[("SQLite default / Postgres scale-path<br/>UNIQUE dna_hash → 1 row per DNA")]
+        Counters["In-memory atomic counters (O(1) stats)"]
+        DB[("SQLite — UNIQUE dna_hash → 1 row per DNA")]
     end
 
-    UI -->|HTTP| LB
-    LB --> Router
+    UI -->|HTTP| Router
     Router --> Static
     Router --> MutantH
     Router --> StatsH
@@ -281,8 +273,6 @@ flowchart TB
     StatsH --> Store
     Store --> Counters
     Store --> DB
-
-    classDef scale stroke-dasharray:5 5;
 ```
 
 ### 10.2 `POST /mutant/` sequence — validation + idempotent dedup
@@ -292,7 +282,7 @@ sequenceDiagram
     actor U as Browser
     participant S as Go server
     participant A as IsMutant
-    participant D as Store (cache + DB)
+    participant D as Store (SQLite)
 
     U->>S: POST /mutant/ { "dna": [...] }
     S->>S: validate square + ATCG
