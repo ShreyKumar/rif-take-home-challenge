@@ -5,8 +5,8 @@ human is a mutant from their DNA sequence, with a REST API, persistence, usage s
 frontend, and supporting docs.
 
 - **Backend:** Go HTTP server (standard library).
-- **Frontend:** static HTML + strict-mode TypeScript (compiled to plain JS via `tsc`) + minimal
-  hand-written CSS, served by the Go server.
+- **Frontend:** static HTML + vanilla JavaScript + minimal hand-written CSS, served by the Go
+  server.
 - **Storage:** embedded SQLite behind a storage interface (with a documented Postgres scale-path).
 
 Requirement IDs (`FR-*`, `NFR-*`) are used so each item is individually testable and traceable to
@@ -22,7 +22,7 @@ the rubric (see [RUBRIC.md](./RUBRIC.md)).
 | HTTP router | Standard library `net/http` `ServeMux` | No web framework |
 | Algorithm | Pure Go package, zero dependencies | Unit-testable in isolation |
 | Storage | **SQLite** via `modernc.org/sqlite` (pure Go, no cgo), behind a `Store` interface | Postgres/Redis swap documented for scale |
-| Frontend | Static **HTML + TypeScript (compiled to JS) + minimal CSS** in `frontend/`, served by the backend at `/` via `http.FileServer` | Source is `frontend/src/app.ts` (`strict: true`), compiled to `frontend/app.js` via `tsc` — the only build step; no framework, no bundler; compiled output served from disk (see §9) |
+| Frontend | Static **HTML + vanilla JS + minimal CSS** in `frontend/`, served by the backend at `/` via `http.FileServer` | Hand-written `frontend/app.js`, committed to the repo — no framework, no bundler, no build step; served from disk (see §9) |
 | Tests | Standard library `testing` + `net/http/httptest`, `go test -cover` | Target > 80% coverage |
 | Config | Environment variables (e.g. `PORT`, `DB_PATH`) | 12-factor friendly |
 | Docs | `README.md` + Mermaid architecture diagram | Reproducible run instructions |
@@ -88,9 +88,9 @@ the rubric (see [RUBRIC.md](./RUBRIC.md)).
 - **FR-5.4** Surfaces validation errors (e.g. the server's `400` message for non-square / illegal input).
 - **FR-5.5** Optionally displays live stats by calling `GET /stats/`.
 - **FR-5.6** Styling is **minimal, hand-written CSS** — no framework, no CSS build step.
-- **FR-5.7** Frontend logic is written in **TypeScript** (`frontend/src/app.ts`, `strict: true`),
-  compiled to plain JS (`frontend/app.js`) via `tsc` — no other framework or bundler *(revised
-  decision — see §7 item 8)*.
+- **FR-5.7** Frontend logic is written in **plain vanilla JavaScript** (`frontend/app.js`,
+  committed to the repo) — no framework, no bundler, no build step *(documented decision — see §7
+  item 8)*.
 
 ---
 
@@ -187,12 +187,12 @@ Judgment calls made where the PDF is silent or ambiguous (each grader-relevant p
 5. **Uppercase `A/T/C/G` only** (V-3); other characters are invalid.
 6. **SQLite** as the default store, interface-abstracted for a Postgres scale-path (NFR-2).
 7. **Small JSON body** on `/mutant/` for the UI, with the **status code authoritative** (FR-2.6).
-8. **Frontend language — TypeScript, not vanilla JS** *(revises the original Phase 6 decision)*: the
-   frontend is authored in strict-mode TypeScript (`frontend/src/app.ts`) and compiled to plain JS
-   (`frontend/app.js`) via `tsc`. The compiled output is a generated build artifact (gitignored, not
-   committed) — same no-framework/no-bundler spirit as before, just with a single-file `tsc` compile
-   step ahead of it. Practical effect: `frontend/app.js` no longer exists in git; running or previewing
-   the frontend now requires `cd frontend && npx tsc` first (see plan.md Phase 11).
+8. **Frontend language — vanilla JavaScript**: the frontend is hand-written plain JS
+   (`frontend/app.js`, committed to the repo) with no framework, bundler, or compile step — the page
+   runs from a clean checkout with zero frontend tooling. A strict-mode TypeScript rewrite
+   (`frontend/src/app.ts` compiled via `tsc`) was explored on a separate branch and may replace this
+   later; until that merges, the committed `app.js` is the source of truth and this document
+   describes what is on `main`.
 
 ---
 
@@ -200,8 +200,8 @@ Judgment calls made where the PDF is silent or ambiguous (each grader-relevant p
 - Authentication / authorization.
 - An implemented rate limiter or autoscaler (scaling is addressed as **design** only — NFR-2).
 - An actual 1M req/s load test or production infrastructure / IaC.
-- A UI framework, app framework, or bundler (React/Vue/webpack/esbuild/Vite/etc.) — the frontend build
-  step is limited to a single-file `tsc` compile (see §7 item 8).
+- A UI framework, app framework, bundler, or frontend build step (React/Vue/webpack/esbuild/Vite/
+  tsc/etc.) — the frontend is plain HTML/JS/CSS served as-is (see §7 item 8).
 
 ---
 
@@ -211,13 +211,10 @@ The root contains exactly two code folders — `frontend/` and `backend/` — pl
 
 ```
 .
-├── frontend/                 # TypeScript source + static assets — no framework, no bundler
-│   ├── src/
-│   │   └── app.ts            # source of truth — compiled by tsc
+├── frontend/                 # static assets — no framework, no bundler, no build step
 │   ├── index.html
-│   ├── app.js                # generated by `npx tsc` — gitignored, not committed
-│   ├── styles.css
-│   └── tsconfig.json         # strict: true, rootDir: src, outDir: .
+│   ├── app.js                # hand-written vanilla JS, committed to the repo
+│   └── styles.css
 ├── backend/                  # self-contained Go module (backend/go.mod)
 │   ├── cmd/server/           # main(): wiring, config, http.ListenAndServe
 │   ├── internal/mutant/      # IsMutant algorithm + unit tests
@@ -247,7 +244,7 @@ the take-home).
 ```mermaid
 flowchart TB
     subgraph Client["Client — Browser"]
-        UI["Static frontend<br/>HTML + TypeScript (compiled to JS) + minimal CSS<br/>(served from frontend/ by the backend)"]
+        UI["Static frontend<br/>HTML + vanilla JS + minimal CSS<br/>(served from frontend/ by the backend)"]
     end
 
     LB["Load Balancer — horizontal scale (design)"]:::scale
