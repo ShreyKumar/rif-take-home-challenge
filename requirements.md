@@ -150,7 +150,7 @@ Addressed by **design**, not a benchmark. The **implemented** properties that su
 - **Dedup at the storage layer** (`UNIQUE(dna_hash)` + upsert) shields the DB from repeated writes.
 
 The horizontal-scale path (load balancer, Postgres/Redis store swap) is **not implemented** — it is
-recorded as future work in [TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md) §11.
+recorded as future work in [TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md) §9.
 
 ### NFR-3 — Automated tests & coverage *(PDF-emphasized: ">80%")*
 - Unit tests for the algorithm across all four orientations plus the edge cases in FR-1 and §6.
@@ -240,7 +240,7 @@ compiled into the binary — an accepted trade-off for the clean two-folder spli
 
 The architecture **as implemented** — a single stateless Go process serving the API and the static
 frontend, backed by embedded SQLite. (The unbuilt horizontal-scale path — load balancer, Postgres/Redis
-swap — is recorded as future work in [TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md) §11.)
+swap — is recorded as future work in [TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md) §9.)
 
 ### 10.1 Component & request flow
 
