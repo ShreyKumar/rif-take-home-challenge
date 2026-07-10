@@ -6,7 +6,7 @@ the in-repo [`loadgen`](./loadgen) driver via `make loadtest`.
 > **Honest caveat.** These numbers are from a **single developer machine** over
 > the **loopback interface**. The brief's 100–1M req/s figure is a design target,
 > not something a single node measures; the unbuilt horizontal-scale path is
-> future work (see [../TECHNICAL_DECISIONS.md](../TECHNICAL_DECISIONS.md) §11).
+> future work (see [../TECHNICAL_DECISIONS.md](../TECHNICAL_DECISIONS.md) §9).
 > Numbers vary run to run; treat them as order-of-magnitude, not benchmarks.
 
 ## Environment
@@ -55,7 +55,7 @@ and tail latency grows with queueing — **still 0% errors**.
 - **Writes are bounded by the single SQLite writer**, by design for the local /
   demo configuration — an empirically confirmed bottleneck. Removing it (a
   Postgres/Redis store swap behind the same `Store` interface) is **not implemented**;
-  it's recorded as future work in [../TECHNICAL_DECISIONS.md](../TECHNICAL_DECISIONS.md) §11.
+  it's recorded as future work in [../TECHNICAL_DECISIONS.md](../TECHNICAL_DECISIONS.md) §9.
 - **Zero 5xx** at every level. The harness only distinguishes transport errors and
   HTTP ≥ 500, so this evidences *"no 5xx under sustained load"* — not full functional
   correctness.

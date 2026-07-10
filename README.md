@@ -198,7 +198,7 @@ it efficient under load:
 Measured on one node in [loadtest/RESULTS.md](./loadtest/RESULTS.md). Horizontal
 scaling (a load balancer, a Postgres/Redis store swap behind the `Store` interface)
 is **not implemented** — it's recorded as future work in
-[TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md) §11.
+[TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md) §9.
 
 ## Documented decisions
 
