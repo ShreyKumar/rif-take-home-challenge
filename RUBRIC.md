@@ -65,7 +65,7 @@ identical letters, horizontally, vertically, or diagonally.
 Full credit: unit tests covering all directions + the edge cases in criterion 1; endpoint /
 integration tests for 200/403, stats math, and dedup; **measured coverage > 80%**; assertions test
 *behaviour*, not just line execution. Deduct for coverage padding, or no endpoint tests. Coverage is
-**CI-gated at ≥ 80% on every PR** (backend only; the frontend is verified manually).
+**CI-gated at ≥ 80% on every PR that touches the backend** (`backend/**`; the frontend is verified manually).
 
 ### 4. Database + dedup — 10 pts · 🚪 Gate
 Full credit: every verified DNA persisted, **exactly one record per distinct DNA** (UNIQUE key on
@@ -83,10 +83,10 @@ repeated matrix copies / transposes); ~`O(N²)` time, `O(1)–O(N)` extra space.
 the whole grid after the answer is known, or per-row regex that rescans needlessly.
 
 ### 7. Scalability design (on paper) — 6 pts · 📐 Design
-Full credit: the README / diagram show real reasoning about the 100–1M burst — **stateless**
-services, **horizontal scaling**, dedup / cache to shield the DB, **O(1) stats via counters** (not
-`COUNT(*)`), optional async / queue for writes — with **honest trade-offs**. Graded on the *design
-narrative*, not a benchmark.
+Full credit: the docs (`TECHNICAL_DECISIONS.md` §11) show real reasoning about the 100–1M burst —
+**stateless** services, **horizontal scaling**, dedup / cache to shield the DB, **O(1) stats via
+counters** (not `COUNT(*)`), optional async / queue for writes — clearly marked as *future work, not
+implemented*, with **honest trade-offs**. Graded on the *design narrative*, not a benchmark.
 
 ### 8. Engineering quality — 6 pts · 🧹 Quality *(inferred — not in the PDF)*
 Full credit: clean separation (algorithm ↔ handlers ↔ storage), graceful error handling, readable

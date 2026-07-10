@@ -4,11 +4,10 @@ Throughput / latency evidence for the mutant-detector service, captured with
 the in-repo [`loadgen`](./loadgen) driver via `make loadtest`.
 
 > **Honest caveat.** These numbers are from a **single developer machine** over
-> the **loopback interface** — they are *not* the horizontally-scaled target.
-> The 100–1M req/s figure in the brief is an **architectural design goal**
-> (stateless replicas behind a load balancer; see the README scalability
-> section), not a single-node measurement. Numbers vary run to run; treat them
-> as order-of-magnitude, not benchmarks.
+> the **loopback interface**. The brief's 100–1M req/s figure is a design target,
+> not something a single node measures; the unbuilt horizontal-scale path is
+> future work (see [../TECHNICAL_DECISIONS.md](../TECHNICAL_DECISIONS.md) §11).
+> Numbers vary run to run; treat them as order-of-magnitude, not benchmarks.
 
 ## Environment
 
@@ -54,11 +53,12 @@ and tail latency grows with queueing — **still 0% errors**.
 - **Reads are effectively free** and scale to ~160k req/s on one node — the O(1)
   counter design pays off exactly where high read volume is expected.
 - **Writes are bounded by the single SQLite writer**, by design for the local /
-  demo configuration. This is the precise bottleneck the documented **scale-path**
-  removes: swap the `Store` implementation for Postgres (pooled writers) + a
-  dedup cache, keeping the same interface, and the stateless server replicates
-  horizontally behind a load balancer. See the README's scalability section.
-- **Zero 5xx** at every level — correctness holds under sustained concurrent load.
+  demo configuration — an empirically confirmed bottleneck. Removing it (a
+  Postgres/Redis store swap behind the same `Store` interface) is **not implemented**;
+  it's recorded as future work in [../TECHNICAL_DECISIONS.md](../TECHNICAL_DECISIONS.md) §11.
+- **Zero 5xx** at every level. The harness only distinguishes transport errors and
+  HTTP ≥ 500, so this evidences *"no 5xx under sustained load"* — not full functional
+  correctness.
 
 ## Reproduce
 

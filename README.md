@@ -139,9 +139,9 @@ or directly:
 cd backend && go test -race -covermode=atomic -coverpkg=./internal/... ./...
 ```
 
-CI enforces a **≥ 80% backend coverage gate** on every PR
-([.github/workflows/ci.yml](./.github/workflows/ci.yml)); the suite currently sits
-well above it. The frontend is verified manually (no JS test suite).
+CI enforces a **≥ 80% backend coverage gate** on every PR that touches the backend
+([.github/workflows/ci.yml](./.github/workflows/ci.yml) triggers on `backend/**`);
+the suite currently sits well above it. The frontend is verified manually (no JS test suite).
 
 ## Load testing
 
@@ -154,7 +154,7 @@ make loadtest    # builds + starts the server, drives reads + mixed load, tears 
 Measured numbers and the honest caveats are in
 [loadtest/RESULTS.md](./loadtest/RESULTS.md): the O(1) `/stats/` read path scales
 to ~160k req/s on one machine, while writes are bounded by SQLite's single writer
-connection — the exact bottleneck the scale-path below removes.
+connection.
 
 ## Docker
 
@@ -185,21 +185,20 @@ SQLite database (`DB_PATH=/tmp/mutant.db`) is **ephemeral** — the stored DNAs 
 fine for a public demo link and does **not** change NFR-6: the local/default run
 still needs no external services and no build step beyond `go run`.
 
-## Scalability (NFR-2)
+## Scalability
 
-Addressed by design; measured on one node in [loadtest/RESULTS.md](./loadtest/RESULTS.md).
+The service is a single stateless Go process. Two **implemented** properties keep
+it efficient under load:
 
-- **Stateless server → horizontal scale.** No per-request state lives in the
-  process, so the single static binary replicates behind a load balancer.
 - **O(1) statistics.** `/stats/` reads in-memory atomic counters seeded once at
-  startup — never a `COUNT(*)` scan — so read volume scales with cores.
-- **Dedup shields the database.** A `UNIQUE(dna_hash)` + upsert means repeated
-  DNA never creates a second row or double-counts, and can be fronted by a cache.
-- **Documented scale-path.** The `Store` interface is the seam: swap SQLite for
-  **Postgres (pooled writers) + a Redis dedup cache/queue** behind the same
-  interface for write throughput, with no change to the algorithm or handlers.
-  SQLite is the honest local/demo default (single writer connection); it is the
-  measured write bottleneck, not a design ceiling.
+  startup — never a `COUNT(*)` scan.
+- **Dedup at the storage layer.** `UNIQUE(dna_hash)` + upsert means repeated DNA
+  never creates a second row or double-counts, shielding the DB from repeat writes.
+
+Measured on one node in [loadtest/RESULTS.md](./loadtest/RESULTS.md). Horizontal
+scaling (a load balancer, a Postgres/Redis store swap behind the `Store` interface)
+is **not implemented** — it's recorded as future work in
+[TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md) §11.
 
 ## Documented decisions
 
@@ -213,5 +212,5 @@ Judgment calls where the brief is silent or ambiguous (full list in
    malformed input gets 400 as sound REST practice.
 4. **`ratio = 0.0` when there are zero humans.**
 5. **Uppercase `A/T/C/G` only.**
-6. **SQLite** as the default store, interface-abstracted for the Postgres scale-path.
+6. **SQLite** as the default store, abstracted behind a `Store` interface.
 7. **Small JSON body** on `/mutant/`, with the **status code authoritative**.

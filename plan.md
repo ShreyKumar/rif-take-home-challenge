@@ -9,7 +9,8 @@ are expected to run larger).
 
 - **One branch + PR per phase** (e.g. `phase-1-algorithm` → PR into `main`).
 - **Every PR is green:** `go build ./...`, `go vet ./...`, and `go test -race -cover ./...` pass, **and
-  total backend coverage is ≥ 80%** — CI enforces the gate on **every PR**, not just at the end.
+  total backend coverage is ≥ 80%** — CI enforces the gate on **every PR that touches `backend/**`**,
+  not just at the end.
 - **Coverage is backend-only:** the ≥ 80% rule applies to the Go backend. The frontend (P6) is verified
   manually — no JS test suite (only the BE is tested).
 - **Tests ship with the code** they cover — each PR adds the tests that keep it over the line.
@@ -70,10 +71,11 @@ Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **3 tracks** in Wave 2.
   config from env (`PORT`), and graceful shutdown; `backend/internal/config`; Go-specific `.gitignore`
   entries (`*.db`, `bin/`); a `README.md` stub; the CI workflow `.github/workflows/ci.yml` — on every
   PR touching `backend/**`, runs `go vet`, `go build`, `go test -race`, and a coverage-threshold gate.
-- **Coverage gate (backend, ≥ 80%):** enforced by `.github/workflows/ci.yml` on **every PR** — the
-  workflow fails the build under 80%. Coverage is measured over `./internal/...`, so the thin
-  `cmd/server` bootstrap is excluded and can't drag the gate down. Mark the **`CI / Test and coverage
-  gate`** check *required* in branch protection so sub-80% PRs cannot merge.
+- **Coverage gate (backend, ≥ 80%):** enforced by `.github/workflows/ci.yml` on **every PR that
+  touches `backend/**`** — the workflow fails the build under 80%. Coverage is measured over
+  `./internal/...`, so the thin `cmd/server` bootstrap is excluded and can't drag the gate down.
+  (Because of the `backend/**` path filter, frontend/docs-only PRs don't trigger it — so don't mark
+  it a *required* check unless the filter is also dropped, or non-backend PRs would block on a pending gate.)
 - **Contracts (the parallelism enabler):** define `backend/internal/contract` — the `Store` interface,
   a `Detector` type (`func([]string) bool`), and the request/response DTOs. These seams let P1–P4 build
   against abstractions instead of each other.
@@ -173,10 +175,11 @@ Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **3 tracks** in Wave 2.
 - **Goal:** make it runnable + reviewable by anyone.
 - **Covers:** **NFR-4** (and surfaces the **NFR-2** scaling narrative).
 - **Adds:** `README.md` — overview, build/run/test, `curl` examples for both endpoints, env vars,
-  documented decisions (§7 of requirements), and the **scalability narrative** (horizontal scale,
-  SQLite→Postgres+Redis scale-path); reference the architecture diagram already in `requirements.md` §10.
-  Optional `backend/Dockerfile` (multi-stage) + a one-paragraph deploy note, and a link to
-  `loadtest/RESULTS.md` (populated by P10) for performance evidence.
+  documented decisions (§7 of requirements), and a short **scalability** note covering the implemented
+  properties (stateless, O(1) stats, storage-layer dedup); the unbuilt horizontal-scale design is
+  recorded as future work in `TECHNICAL_DECISIONS.md` §11. Reference the architecture diagram in
+  `requirements.md` §10. Optional `backend/Dockerfile` (multi-stage) + a one-paragraph deploy note,
+  and a link to `loadtest/RESULTS.md` (populated by P10) for performance evidence.
 - **Done when:** a clean checkout can build, run, and test from the README alone.
 
 ## Phase 10 — Load harness + performance results
@@ -228,7 +231,7 @@ Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **3 tracks** in Wave 2.
 | API contract (§3) | P3, P4 |
 | NFR-1 — efficiency | P1 |
 | NFR-2 — scalability (design) | P2 (interface, O(1) stats) + P8 (narrative) + P10 (measured evidence) |
-| NFR-3 — tests > 80% (backend) | ≥ 80% gate on every PR (from P0) + P7 (e2e) |
+| NFR-3 — tests > 80% (backend) | ≥ 80% gate on every backend PR (from P0) + P7 (e2e) |
 | NFR-4 — docs + diagram | P8 (diagram already in requirements §10) |
 | NFR-5 — code quality | all phases (conventions) |
 | NFR-6 — portability / run | P0 + P5 |
@@ -236,5 +239,5 @@ Peak concurrency: **5 tracks** in Wave 1 (P1–P4 + P6), **3 tracks** in Wave 2.
 
 ## Definition of Done (overall)
 Every `FR-*`/`NFR-*` above is satisfied, the [RUBRIC.md](./RUBRIC.md) self-scoring checklist passes,
-every PR passed CI's ≥ 80% backend-coverage gate, the app builds/runs/tests
+every backend PR passed CI's ≥ 80% backend-coverage gate, the app builds/runs/tests
 from the README on a clean checkout, and the README includes documented load-test results.
