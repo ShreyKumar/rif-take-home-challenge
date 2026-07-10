@@ -9,6 +9,12 @@ import { check, sleep } from "k6";
 
 const BASE_URL = __ENV.BASE_URL || "http://127.0.0.1:8080";
 
+// k6's http_req_failed counts anything outside 200–399 as a failure by
+// default, but 403 is the expected "human" verdict here (~40% of requests) —
+// without this, the threshold below would trip on every run against a
+// perfectly healthy server.
+http.setResponseCallback(http.expectedStatuses(200, 403));
+
 const MUTANT = JSON.stringify({
   dna: ["ATGCGA", "CAGTGC", "TTATGT", "AGAAGG", "CCCCTA", "TCACTG"],
 });
