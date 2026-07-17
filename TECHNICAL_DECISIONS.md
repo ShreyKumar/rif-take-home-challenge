@@ -15,7 +15,7 @@ Go was chosen because the workload is CPU-bound string scanning served over HTTP
 The detection algorithm lives in its own package with no knowledge of HTTP or storage. That boundary is what makes it testable in isolation and is the main structural decision in the codebase.
 
 **Pros:** cheap goroutines per request fit a CPU-bound, high-concurrency workload, and stdlib-only means almost no third-party surface and a single static binary. Predictable performance with no runtime to provision keeps deployment to shipping one executable, and the algorithm living in its own package — with no knowledge of HTTP or storage — keeps the core logic testable in isolation.
-**Cons:** any of the permitted languages would have solved the problem — this is a fit argument, not a correctness one.
+**Cons:** stdlib-only means assembling by hand what a framework provides — safe server defaults, routing conventions, middleware — and the stdlib's permissive defaults (no timeouts, subtree route matching) become the service's defaults unless explicitly overridden.
 
 ## 2. Core algorithm
 
