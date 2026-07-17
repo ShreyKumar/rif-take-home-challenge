@@ -134,4 +134,4 @@ The image builds from a fully static binary with no C dependencies, so the conta
 AI assistance was used for implementation and for automated code review on pull requests. Every architectural decision in this document, and in particular the algorithm's overlap policy, the error contract, and the choice to leave the counters process-local, was made and defended by me. The tests are the contract that decides whether the generated code was right.
 
 **Pros:** AI accelerated implementation and PR review while every architectural decision remained human-made and defended.
-**Cons:** the tests are the arbiter of generated code, so that assurance extends only as far as the tests themselves reach.
+**Cons:** AI output can be confidently wrong — hallucinated APIs, behaviours, or claims that read as plausible — and the tests that arbitrate generated code only reach what they cover, leaving untested surface such as docs, comments, and the frontend exposed to exactly that failure mode.
