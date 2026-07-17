@@ -107,7 +107,7 @@ The brief asks me to consider aggressive traffic fluctuation, not to build for i
 At 1M req/s the real questions are rate limiting, autoscaling policy, cache invalidation, and infrastructure-as-code. None of those are in this repository, and pretending otherwise would be worse than saying so.
 
 **Pros:** the scale path is staged and concrete — shared counters, then PostgreSQL behind the existing interface, then async writes — with no handler or algorithm changes required.
-**Cons:** the design is proven on paper only — the clean-swap claims for PostgreSQL and shared counters remain untested until built, and the operational questions at the top of the range (rate limiting, autoscaling, cache invalidation) are consciously deferred.
+**Cons:** the scale plan is a blueprint, not a demonstration — swapping in PostgreSQL or shared counters may surface issues the interface currently hides, and the hardest problems at extreme scale (rate limiting, autoscaling, cache invalidation) are deliberately out of scope.
 
 ## 10. Repository structure
 
