@@ -28,7 +28,7 @@ This is O(N²) time and O(1) additional space, which is the floor for a problem 
 **Ambiguity resolved:** the brief does not say whether overlapping sequences count separately. A row of six identical letters contains three overlapping windows of four. I treat each distinct starting position as a distinct sequence, so that row alone makes a human a mutant. The alternative reading, requiring two non-overlapping sequences, is defensible, but the chosen interpretation matches the example in the brief and is the simpler contract to explain to a caller. Matrices smaller than 4x4 can contain no sequence and return non-mutant immediately.
 
 **Pros:** a single scan with forward-only directions and early exit achieves O(N²) time and O(1) space, with no deduplication step needed.
-**Cons:** it rests on resolving the brief's overlap ambiguity in favour of counting overlapping windows; the non-overlapping reading is also defensible. Under this policy a single row of six identical letters is already a mutant verdict, which may surprise anyone expecting two visibly separate sequences. The single-pass, forward-only design also trades readability for optimality — a naive extract-every-line-and-count-runs implementation would be easier to verify, at the cost of O(N²) extra space and the early exit.
+**Cons:** the optimised single-pass scan is harder to verify than a naive line-by-line count, which would be simpler at the cost of O(N²) extra space and the early exit.
 
 ## 3. Handling invalid input
 
@@ -89,7 +89,7 @@ The results are single-machine, loopback numbers and are not offered as evidence
 Reported numbers include hardware, concurrency level, duration, payload, and p50/p95/p99 latency, since throughput without percentiles says very little about behaviour under load.
 
 **Pros:** the harness needs nothing beyond the Go toolchain, and it confirms the predicted single-writer bottleneck with measurements rather than assumptions.
-**Cons:** the numbers are single-machine, loopback figures and say nothing about the brief's 100-to-1M req/s range.
+**Cons:** loopback, single-machine numbers can confirm the predicted bottleneck but not behaviour under real network conditions at the brief's upper scale; that evidence would need distributed load infrastructure, which is deliberately out of scope.
 
 ## 9. Scalability, designed rather than built
 
@@ -107,14 +107,14 @@ The brief asks me to consider aggressive traffic fluctuation, not to build for i
 At 1M req/s the real questions are rate limiting, autoscaling policy, cache invalidation, and infrastructure-as-code. None of those are in this repository, and pretending otherwise would be worse than saying so.
 
 **Pros:** the scale path is staged and concrete — shared counters, then PostgreSQL behind the existing interface, then async writes — with no handler or algorithm changes required.
-**Cons:** none of it is implemented, and the hardest problems at 1M req/s (rate limiting, autoscaling, cache invalidation) are explicitly outside this repository.
+**Cons:** the scale plan is a blueprint, not a demonstration — swapping in PostgreSQL or shared counters may surface issues the interface currently hides, and the hardest problems at extreme scale (rate limiting, autoscaling, cache invalidation) are deliberately out of scope.
 
 ## 10. Repository structure
 
 Two top-level directories, `frontend/` and `backend/`, kept separate rather than nesting one inside the other. The seam is the HTTP contract in §3, and keeping the tree flat makes that boundary visible from the repository root.
 
 **Pros:** the frontend/backend seam is the HTTP contract, and the flat tree keeps that boundary visible from the repository root.
-**Cons:** the two-folder description has to be kept honest as tooling grows — `loadtest/` (§8) already sits beside them.
+**Cons:** the two-folder description has to be kept honest as tooling grows — `loadtest/` (§8) already sits beside them. The flat layout also doesn't scale with the codebase — more services or shared packages would force a restructure — and the simplicity it buys matters less in a team setting, where ownership boundaries and per-component pipelines pull toward a more structured layout.
 
 ## 11. Deployment
 
@@ -134,4 +134,4 @@ The image builds from a fully static binary with no C dependencies, so the conta
 AI assistance was used for implementation and for automated code review on pull requests. Every architectural decision in this document, and in particular the algorithm's overlap policy, the error contract, and the choice to leave the counters process-local, was made and defended by me. The tests are the contract that decides whether the generated code was right.
 
 **Pros:** AI accelerated implementation and PR review while every architectural decision remained human-made and defended.
-**Cons:** the tests are the arbiter of generated code, so that assurance extends only as far as the tests themselves reach.
+**Cons:** AI output can be confidently wrong — hallucinated APIs, behaviours, or claims that read as plausible — and the tests that arbitrate generated code only reach what they cover, leaving untested surface such as docs, comments, and the frontend exposed to exactly that failure mode. This is why manual code review remains essential: a human reading the diff is the only check that covers what neither the tests nor the AI's own confidence can.
