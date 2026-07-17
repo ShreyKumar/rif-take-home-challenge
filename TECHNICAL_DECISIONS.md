@@ -14,7 +14,7 @@ Go was chosen because the workload is CPU-bound string scanning served over HTTP
 
 The detection algorithm lives in its own package with no knowledge of HTTP or storage. That boundary is what makes it testable in isolation and is the main structural decision in the codebase.
 
-**Pros:** cheap goroutines per request fit a CPU-bound, high-concurrency workload, and stdlib-only means almost no third-party surface and a single static binary.
+**Pros:** cheap goroutines per request fit a CPU-bound, high-concurrency workload, and stdlib-only means almost no third-party surface and a single static binary. Predictable performance with no runtime to provision keeps deployment to shipping one executable, and the algorithm living in its own package — with no knowledge of HTTP or storage — keeps the core logic testable in isolation.
 **Cons:** any of the permitted languages would have solved the problem — this is a fit argument, not a correctness one.
 
 ## 2. Core algorithm
@@ -28,7 +28,7 @@ This is O(N²) time and O(1) additional space, which is the floor for a problem 
 **Ambiguity resolved:** the brief does not say whether overlapping sequences count separately. A row of six identical letters contains three overlapping windows of four. I treat each distinct starting position as a distinct sequence, so that row alone makes a human a mutant. The alternative reading, requiring two non-overlapping sequences, is defensible, but the chosen interpretation matches the example in the brief and is the simpler contract to explain to a caller. Matrices smaller than 4x4 can contain no sequence and return non-mutant immediately.
 
 **Pros:** a single scan with forward-only directions and early exit achieves O(N²) time and O(1) space, with no deduplication step needed.
-**Cons:** it rests on resolving the brief's overlap ambiguity in favour of counting overlapping windows; the non-overlapping reading is also defensible.
+**Cons:** it rests on resolving the brief's overlap ambiguity in favour of counting overlapping windows; the non-overlapping reading is also defensible. Under this policy a single row of six identical letters is already a mutant verdict, which may surprise anyone expecting two visibly separate sequences.
 
 ## 3. Handling invalid input
 
