@@ -15,6 +15,7 @@ Go was chosen because the workload is CPU-bound string scanning served over HTTP
 The detection algorithm lives in its own package with no knowledge of HTTP or storage. That boundary is what makes it testable in isolation and is the main structural decision in the codebase.
 
 **Pros:** cheap goroutines per request fit a CPU-bound, high-concurrency workload, and stdlib-only means almost no third-party surface and a single static binary. Predictable performance with no runtime to provision keeps deployment to shipping one executable, and the algorithm living in its own package — with no knowledge of HTTP or storage — keeps the core logic testable in isolation.
+
 **Cons:** stdlib-only means assembling by hand what a framework provides — safe server defaults, routing conventions, middleware — and the stdlib's permissive defaults (no timeouts, subtree route matching) become the service's defaults unless explicitly overridden.
 
 ## 2. Core algorithm
@@ -28,6 +29,7 @@ This is O(N²) time and O(1) additional space, which is the floor for a problem 
 **Ambiguity resolved:** the brief does not say whether overlapping sequences count separately. A row of six identical letters contains three overlapping windows of four. I treat each distinct starting position as a distinct sequence, so that row alone makes a human a mutant. The alternative reading, requiring two non-overlapping sequences, is defensible, but the chosen interpretation matches the example in the brief and is the simpler contract to explain to a caller. Matrices smaller than 4x4 can contain no sequence and return non-mutant immediately.
 
 **Pros:** a single scan with forward-only directions and early exit achieves O(N²) time and O(1) space, with no deduplication step needed.
+
 **Cons:** the optimised single-pass scan is harder to verify than a naive line-by-line count, which would be simpler at the cost of O(N²) extra space and the early exit.
 
 ## 3. Handling invalid input
@@ -47,6 +49,7 @@ The data is a flat set of DNA strings with no relations, so a relational server 
 **One record per DNA is enforced by a uniqueness constraint in the database**, keyed on a hash of the DNA sequence, not by an application-level check. Application checks lose races; the constraint does not. Two identical submissions arriving simultaneously still produce exactly one row.
 
 **Pros:** SQLite is right-sized for flat, relation-free data, and constraint-based deduplication cannot lose races the way an application-level check can.
+
 **Cons:** it is unambiguously the write ceiling of the system — a limit accepted knowingly, measured in §8, and addressed in §9.
 
 ## 5. Statistics endpoint
@@ -56,6 +59,7 @@ Counters for mutant and human DNA are maintained in memory, seeded once from the
 **This is the design's honest limitation.** In-memory counters are process-local. A single instance is correct; two instances behind a load balancer would each report only the traffic they personally saw. The stats endpoint, as built, is not horizontally scalable. Moving the counters to a shared store is the first thing §9 changes, and it is a deliberate scope decision, not an oversight.
 
 **Pros:** stats answer in constant time regardless of table size, with no `COUNT(*)` on the hot path.
+
 **Cons:** the counters are process-local, so the endpoint as built is correct for exactly one instance and blocks horizontal scaling until they move to a shared store.
 
 ## 6. Frontend
@@ -67,6 +71,7 @@ The interface is one text input, one submit action, and one result state. There 
 The frontend calls the same public API a third-party client would, so it exercises the real contract rather than a privileged path.
 
 **Pros:** no build pipeline or dependency tree for a one-input, one-action UI, and the frontend exercises the same public API any third-party client would.
+
 **Cons:** the judgement only holds while the UI stays trivial; a larger interface would need the tooling this one deliberately avoids.
 
 ## 7. Testing
@@ -78,6 +83,7 @@ Coverage is weighted toward the algorithm, where correctness actually lives: the
 The frontend is not covered by automated tests. For a single form with one interaction, the cost of that harness is not justified, and saying so is more useful than reporting a coverage number that excludes it silently.
 
 **Pros:** coverage concentrates where correctness lives — the algorithm, the status-code contract, and concurrent writes — and the CI gate turns regressions into build failures.
+
 **Cons:** the frontend carries no automated tests; the gap is deliberate and stated, but it is still a gap.
 
 ## 8. Load testing
@@ -89,6 +95,7 @@ The results are single-machine, loopback numbers and are not offered as evidence
 Reported numbers include hardware, concurrency level, duration, payload, and p50/p95/p99 latency, since throughput without percentiles says very little about behaviour under load.
 
 **Pros:** the harness needs nothing beyond the Go toolchain, and it confirms the predicted single-writer bottleneck with measurements rather than assumptions.
+
 **Cons:** loopback, single-machine numbers can confirm the predicted bottleneck but not behaviour under real network conditions at the brief's upper scale; that evidence would need distributed load infrastructure, which is deliberately out of scope.
 
 ## 9. Scalability, designed rather than built
@@ -107,6 +114,7 @@ The brief asks me to consider aggressive traffic fluctuation, not to build for i
 At 1M req/s the real questions are rate limiting, autoscaling policy, cache invalidation, and infrastructure-as-code. None of those are in this repository, and pretending otherwise would be worse than saying so.
 
 **Pros:** the scale path is staged and concrete — shared counters, then PostgreSQL behind the existing interface, then async writes — with no handler or algorithm changes required.
+
 **Cons:** the scale plan is a blueprint, not a demonstration — swapping in PostgreSQL or shared counters may surface issues the interface currently hides, and the hardest problems at extreme scale (rate limiting, autoscaling, cache invalidation) are deliberately out of scope.
 
 ## 10. Repository structure
@@ -114,6 +122,7 @@ At 1M req/s the real questions are rate limiting, autoscaling policy, cache inva
 Two top-level directories, `frontend/` and `backend/`, kept separate rather than nesting one inside the other. The seam is the HTTP contract in §3, and keeping the tree flat makes that boundary visible from the repository root.
 
 **Pros:** the frontend/backend seam is the HTTP contract, and the flat tree keeps that boundary visible from the repository root.
+
 **Cons:** the two-folder description has to be kept honest as tooling grows — `loadtest/` (§8) already sits beside them. The flat layout also doesn't scale with the codebase — more services or shared packages would force a restructure — and the simplicity it buys matters less in a team setting, where ownership boundaries and per-component pipelines pull toward a more structured layout.
 
 ## 11. Deployment
@@ -127,6 +136,7 @@ Render runs a long-lived container with a persistent disk attached, which is the
 The image builds from a fully static binary with no C dependencies, so the container ships almost nothing beyond the executable itself.
 
 **Pros:** a long-lived container with a persistent disk is the minimum the file-backed storage design requires, and the database survives redeploys.
+
 **Cons:** the choice is dictated by SQLite's persistence needs — Vercel was viable on language but would have forced a hosted database.
 
 ## 12. AI tooling
@@ -134,4 +144,5 @@ The image builds from a fully static binary with no C dependencies, so the conta
 AI assistance was used for implementation and for automated code review on pull requests. Every architectural decision in this document, and in particular the algorithm's overlap policy, the error contract, and the choice to leave the counters process-local, was made and defended by me. The tests are the contract that decides whether the generated code was right.
 
 **Pros:** AI accelerated implementation and PR review while every architectural decision remained human-made and defended.
+
 **Cons:** AI output can be confidently wrong — hallucinated APIs, behaviours, or claims that read as plausible — and the tests that arbitrate generated code only reach what they cover, leaving untested surface such as docs, comments, and the frontend exposed to exactly that failure mode. This is why manual code review remains essential: a human reading the diff is the only check that covers what neither the tests nor the AI's own confidence can.
