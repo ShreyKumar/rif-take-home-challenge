@@ -11,7 +11,9 @@ in SQLite, and reports usage statistics.
   DNA, with O(1) usage counters.
 
 See [requirements.md](./requirements.md) for the full spec (and the architecture
-diagram in §10) and [plan.md](./plan.md) for the phased delivery.
+diagram in §10), [TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md) for the
+reasoning and tradeoffs behind every major choice, and [plan.md](./plan.md) for
+the phased delivery.
 
 ## Architecture
 
