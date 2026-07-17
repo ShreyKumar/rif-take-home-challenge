@@ -114,7 +114,7 @@ At 1M req/s the real questions are rate limiting, autoscaling policy, cache inva
 Two top-level directories, `frontend/` and `backend/`, kept separate rather than nesting one inside the other. The seam is the HTTP contract in §3, and keeping the tree flat makes that boundary visible from the repository root.
 
 **Pros:** the frontend/backend seam is the HTTP contract, and the flat tree keeps that boundary visible from the repository root.
-**Cons:** the two-folder description has to be kept honest as tooling grows — `loadtest/` (§8) already sits beside them.
+**Cons:** the two-folder description has to be kept honest as tooling grows — `loadtest/` (§8) already sits beside them. The flat layout also doesn't scale with the codebase — more services or shared packages would force a restructure — and the simplicity it buys matters less in a team setting, where ownership boundaries and per-component pipelines pull toward a more structured layout.
 
 ## 11. Deployment
 
