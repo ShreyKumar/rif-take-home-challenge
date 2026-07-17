@@ -38,9 +38,6 @@ Malformed DNA returns **400**, not 403: a non-square matrix, rows of unequal len
 
 Request bodies are also size-capped and the server sets connection timeouts. Neither is asked for, but a service positioned as high-throughput should not be exhausted by one slow or oversized request.
 
-**Pros:** 400 keeps malformed input distinguishable from a genuine non-mutant verdict, so a caller's bug is never hidden behind a successful-looking judgement.
-**Cons:** the brief says nothing about invalid input, so the entire error contract is an interpretation the caller has to learn.
-
 ## 4. Storage
 
 SQLite, accessed through a small storage interface that the HTTP handlers depend on rather than depending on SQLite directly.
