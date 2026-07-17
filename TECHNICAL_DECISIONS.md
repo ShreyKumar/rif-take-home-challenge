@@ -28,7 +28,7 @@ This is O(N²) time and O(1) additional space, which is the floor for a problem 
 **Ambiguity resolved:** the brief does not say whether overlapping sequences count separately. A row of six identical letters contains three overlapping windows of four. I treat each distinct starting position as a distinct sequence, so that row alone makes a human a mutant. The alternative reading, requiring two non-overlapping sequences, is defensible, but the chosen interpretation matches the example in the brief and is the simpler contract to explain to a caller. Matrices smaller than 4x4 can contain no sequence and return non-mutant immediately.
 
 **Pros:** a single scan with forward-only directions and early exit achieves O(N²) time and O(1) space, with no deduplication step needed.
-**Cons:** it rests on resolving the brief's overlap ambiguity in favour of counting overlapping windows; the non-overlapping reading is also defensible. Under this policy a single row of six identical letters is already a mutant verdict, which may surprise anyone expecting two visibly separate sequences.
+**Cons:** it rests on resolving the brief's overlap ambiguity in favour of counting overlapping windows; the non-overlapping reading is also defensible. Under this policy a single row of six identical letters is already a mutant verdict, which may surprise anyone expecting two visibly separate sequences. The single-pass, forward-only design also trades readability for optimality — a naive extract-every-line-and-count-runs implementation would be easier to verify, at the cost of O(N²) extra space and the early exit.
 
 ## 3. Handling invalid input
 
