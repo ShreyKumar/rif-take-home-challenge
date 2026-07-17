@@ -2,7 +2,7 @@
 
 The guiding principle for this project was proportionality. The problem is small and well defined, so the goal was to solve it correctly, prove it with tests, and be explicit about where the design stops rather than over-building for a scale target the brief only asks me to reason about.
 
-This document covers the reasoning. The architecture diagram is in `docs/requirements.md` and run instructions are in `README.md`.
+This document covers the reasoning. The architecture diagram is in `requirements.md` and run instructions are in `README.md`.
 
 ---
 
