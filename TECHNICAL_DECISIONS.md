@@ -89,7 +89,7 @@ The results are single-machine, loopback numbers and are not offered as evidence
 Reported numbers include hardware, concurrency level, duration, payload, and p50/p95/p99 latency, since throughput without percentiles says very little about behaviour under load.
 
 **Pros:** the harness needs nothing beyond the Go toolchain, and it confirms the predicted single-writer bottleneck with measurements rather than assumptions.
-**Cons:** the numbers are single-machine, loopback figures and say nothing about the brief's 100-to-1M req/s range.
+**Cons:** loopback, single-machine numbers can confirm the predicted bottleneck but not behaviour under real network conditions at the brief's upper scale; that evidence would need distributed load infrastructure, which is deliberately out of scope.
 
 ## 9. Scalability, designed rather than built
 
